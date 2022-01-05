@@ -1,0 +1,558 @@
+---------------------- **** 비교연산자 **** day2-----------------------------
+    
+    /*
+    1. 같다                    = 
+    2. 같지않다                !=  <>  ^= 
+    3. 크다. 작다              >   <
+    4. 같거나크다. 같거나작다    >=       <= 
+    5. NULL 은 존재하지 않는 것이므로 비교대상이 될 수가 없다.
+       그러므로 비교연산( =  != <> ^= >  <  >=  <= )을 할수가 없다.
+       그래서 비교연산을 하려면 nvl()함수, nvl2()함수를 사용하여 처리한다. 
+    */
+    
+    -- 오라클에서 컬럼들을 붙일때(연결할 때)는 문자 타입이든 숫자 타입이든 날짜 타입이든 관계없이 || 를 쓰면 된다.       
+    select sysdate  -- 현재날짜시각을 알려주는 것
+    from dual;
+    
+    select '서울시' || ' ' || '마포구 쌍용강북교육센터' || 1234
+    from dual;
+    -- 숫자는 오른쪽, 문자는 왼쪽 정렬, 
+    -- 숫자는 앞에 나오는 0 생략됨, 문자는 생략 안 됨.\
+      ==> 그렇기에 문자로 받는 것이 비교하는 데에 있어 좋다.
+      
+    desc employees; -- employees 테이블의 컬럼(Column)의 정보를 알려주는 것이다.
+    
+    [비교연산자 예제1]
+    -- employees(직원) 테이블에 부서번호(department_id)가 NULL인 사원들만 
+    -- 사원번호, 사원명, 월급, 부서번호를 나타내세요.
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl( salary + (salary * commission_pct), salary ) as "월급" 
+         , department_id as "부서번호"
+    from employees
+    where nvl(department_id, -9999) = -9999; 
+    -- null은 존재하지 않는 값이기 때문에 비교연산을 할 수가 없다.
+    -- nvl로 null을 표시해줘야 하는데, department_id의 컬럼값에는 -9999가 없기 떄문에 null이 뜬다.
+    
+    -- **** where절에서 값을 대입해도 출력되는건 select의 값이기 때문에 혼동하지 말 것 !!! *****
+    
+    -- 또는
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl( salary + (salary * commission_pct), salary ) as "월급" 
+         , department_id as "부서번호"
+    from employees
+    where department_id is null; -- NULL은 is 를 사용하여 구한다.
+                                 -- department_id 컬럼의 값이 null 인 행들만 메모기(RAM)에 퍼올린다.
+                                 
+   
+   
+   [비교연산자 예제2]                             
+    -- employees(직원) 테이블에 부서번호(department_id)가 60번에 근무하지 않는 사원들만 
+    -- 사원번호, 사원명, 월급, 부서번호를 나타내세요.   
+    select employee_id as "사원번호"   
+        , first_name || ' ' || last_name as "사원명"
+        , nvl( salary + (salary * commission_pct), salary ) as "월급" 
+        , department_id as "부서번호"
+    from employees
+    where nvl(department_id, -9999) != 60; -- NOT NULL이 아니기 때문에 NULL을 표시해주기 위함.
+    -- where nvl(department_id, -9999) <> 60;
+    -- where nvl(department_id, -9999) ^= 60;
+
+    -- ** 항상 구성이 어떻게 되어 있는지를 봐야 함.(desc) **
+    
+     [비교연산자 예제3]  
+    -- employees(직원) 테이블에 부서번호(department_id)가 NULL이 아닌 사원들만 
+    -- 사원번호, 사원명, 월급, 부서번호를 나타내세요.   
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl( salary + (salary * commission_pct), salary ) as "월급" 
+         , department_id as "부서번호"
+    from employees
+    where nvl(department_id, -9999) != -9999; 
+    -- where department_id is not null;
+    -- where not department_id is null;
+    -- where not (department_id is null);
+    -- *** not은 앞 뒤에 와도 적용된다 ***       
+    
+    
+-----------------------------------------------------------------------------------------------------
+
+    ------ *** select 되어져 나온 데이터를 정렬(오름차순정렬, 내림차순정렬)하여 보여주기 ***
+    -- 오름차순은 뒤에 asc를 붙이거나 생략이 가능하다.
+    -- 내림차순은 뒤에 desc를 붙여서 표현할 수 있다.
+    -- *** 컬럼명, 컬럼의 순서, 컬럼의 별명으로도 오름/내림차순이 가능하다.
+    -- 오라클에서 null 은 존재하지 않는 것이므로 정렬시 가장 큰 것으로 간주한다.
+    
+    
+    
+    [오름/내림차순 예제1]
+    select employee_id, first_name, last_name, salary, department_id
+    from employees   
+    order by salary asc; -- salary 컬럼의 값을 오름차순하여 보여라.
+    -- 또는 order by salary; -- asc 은 생략 가능하다.
+    
+    order by salary desc; -- salary 컬럼의 값을 내림차순하여 보여라.
+    
+    
+    [오름/내림차순 예제2]
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl(salary + ( salary * commission_pct ), salary) as "월급"
+         , department_id as "부서번호"
+    from employees
+    where  department_id is not null
+    order by 4, "월급" desc; -- 1차로 부서번호 오름차순, 2차로 월급 내림차순
+    -- 또는
+    order by department_id asc, 3 desc; -- 1차로 부서번호 오름차순, 2차로 월급 내림차순 
+    -- *** 컬럼명, 컬럼의 순서, 컬럼의 별명으로도 오름/내림차순이 가능하다.
+    -- 오라클에서 null 은 존재하지 않는 것이므로 정렬시 가장 큰 것으로 간주한다.
+    -- 그러므로 오름차순 정렬시 null은 맨 뒤에 나오고 
+    -- 내림차순 정렬시 null 은 맨 처음에 나온다.
+    
+    /*
+     참고로 Microsoft 사에서 만든 MS-SQL 서버에서는 null 은 정렬시 가장 작은것으로 간주하기에
+     오라클과 반대로 나온다.
+     즉, 오름차순 정렬시 null은 맨 처음에 나오고, 내림차순 정렬시 null 은 맨 뒤에 나온다.
+    */
+    
+    [오름/내림차순 예제3]
+    /*
+    employees 테이블에서 월급(기본급여+수당금액)이 10000보다 큰 사원들만
+    사원번호, 사원명, 월급(기본급여+수당금액), 부서번호를 나타내되
+    먼저 부서번호의 오름차순으로 정렬한 후 동일한 부서번호 내에서는 월급의 내림차수느으로 나타내세요.
+    */
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl(salary + (salary * commission_pct), salary) as "월급"
+         , department_id as "부서번호"
+    from employees
+    where nvl(salary + (salary * commission_pct), salary) > 10000
+    -- ***** where "월급" 안됨!! -> where가 select보다 먼저니까! ******
+    order by 4, 3 desc;
+    
+    
+    ---------------------------------------------------------------------------------------------------
+    
+    ------------------ *** AND OR IN() NOT 연산자 *** -----------------------------
+    1. AND = 조건을 모두 만족해야 출력.
+    2. OR = 하나의 조건만 만족해도 만족하는 부분을 출력.
+    3. IN(A,B,C) = A,B,C의 조건에 만족하는 부분을 출력
+       - A OR B OR C 와 같다.
+    
+    *** 주의 ****
+    !!! AND 와 OR 가 혼용되어지면 우선순위는 AND 가 먼저 실행된다. !!!
+    연산자에 있어서 가장 최우선은 괄호() 가 우선이다.
+    
+    /*
+   대용량 데이터베이스인 경우 IN 연산자 보다는 OR 를 사용하기를 권장하고,
+   대용량 데이터베이스인 경우 between A and B 보다는 >= and <= 을 사용할 것을 권장한다.
+   왜냐하면 IN 연산자는 내부적으로 OR 로 변경된 후 실행되고, 
+   between A and B 도 내부적으로 >= and <= 으로 변경된 후 실행되기 때문이다. 
+
+   -- 대용량 데이터베이스의 기준은 어떤 테이블의 행의 개수가 100만건을 넘을 경우를 말한다.
+   -- 소규모 데이터베이스의 기준은 어떤 테이블의 행의 개수가 1만건 미만인 경우를 말한다.
+   */
+    
+    
+    [AND 예제] 
+    /*
+    employees 테이블에서 80번 부서에 근무하는 사원들 중에 기본급여가 10000 이상인 
+    사원들만 사원번호, 사원명, 기본급여, 부서번호를 나타내세요.
+    */
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl(salary + (salary * commission_pct), salary) as "월급"
+         , department_id as "부서번호"
+    from employees
+    where department_id = 80 and 
+          salary >= 10000;
+          
+   /*
+   [퀴즈]
+   -- employees 테이블에서 부서번호가 30, 50, 60번 부서에 근무하는 사원들중에 
+   -- 연봉(월급*12)이 20000 이상 60000 이하인 사원들만 
+   -- 사원번호, 사원명, 연봉(월급*12), 부서번호를 나타내되 
+   -- 부서번호의 오름차순으로 정렬한 후 동일한 부서번호내에서는 연봉의 내림차순으로 나타내세요.
+    */
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl( salary + (salary * commission_pct), salary )*12 as "연봉"
+         , department_id as "부서번호"
+    from employees
+    where department_id = 30 or department_id = 60 or department_id = 60  and
+          nvl( salary + (salary * commission_pct), salary )*12 >= 20000 and
+          nvl( salary + (salary * commission_pct), salary )*12 <= 60000
+    order by 4, 3 desc; -- 틀린 풀이(60번만 연봉범위제한에 들어감)
+    
+    /*
+        !!! AND 와 OR 가 혼용되어지면 우선순위는 AND 가 먼저 실행된다. !!!
+        연산자에 있어서 가장 최우선은 괄호() 가 우선이다.
+    */
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , nvl( salary + (salary * commission_pct), salary )*12 as "연봉"
+         , department_id as "부서번호"
+    from employees
+    where (department_id = 30 or department_id = 60 or department_id = 60)  and
+          nvl( salary + (salary * commission_pct), salary )*12 >= 20000 and
+          nvl( salary + (salary * commission_pct), salary )*12 <= 60000
+    order by 4, 3 desc; -- 맞는 풀이(OR 부분을 괄호로 묶음)
+    
+    
+    
+   ---------------------------------------------------------------------------------------------------
+   
+   ---- *** ==== 범위 연산자 === *** ----
+    
+    /*
+        범위 연산자에 사용되는 데이터는 숫자, 문자, 날짜 모두가 사용된다.
+        > < >= <=
+        between A and B --> A 부터 B까지
+    */
+    
+    ---- *** == 현재시가을 알려주는 것 == *** ----
+    select sysdate , current_date, 
+           localtimestamp, current_timestamp,
+           systimestamp
+    from dual;
+    --   22/01/05 	22/01/05
+    --   22/01/05 12:06:37.000000000	22/01/05 12:06:37.000000000 ASIA/SEOUL
+    --   22/01/05 12:07:03.423000000 +09:00
+    
+    /*
+       날짜타입은 date 이다.
+       date 타입의 기본적인 표현방식은 'RR/MM/DD' 으로 나타내어진다.
+       RR 은 년도의 2자리만 나타내어주는데 50 ~ 99 는  1950 ~ 1999 을 말하는 것이다.
+       RR 은 년도의 2자리만 나타내어주는데 00 ~ 49 는  2000 ~ 2049 을 말하는 것이다.
+       MM 은 월이고, DD 는 일이다.
+   */
+   
+   [날짜표시형식]
+   select sysdate
+        , to_char(sysdate, 'yyyy-mm-dd am hh:mi:ss')
+        , to_char(sysdate, 'yyyy-mm-dd pm hh:mi:ss')
+        , to_char(sysdate, 'yyyy-mm-dd hh24:mi:ss')
+        , to_char(sysdate, 'yyyy/mm/dd hh24:mi:ss')
+   from dual;
+   -- 2022-01-05 오후 06:24:11	
+   -- 2022-01-05 오후 06:24:11	
+   -- 2022-01-05 18:24:11	
+   -- 2022/01/05 18:24:11
+   
+   [날짜 예제1]
+   -- employees 테이블에서 입사일자가 2005년 1월 1일 부터 2006년 12월 31일 까지 입사한 사원들만 
+    -- 사원번호, 사원명, 입사일자를 나타내세요.
+    
+    select employee_id as 사원번호
+        , first_name || ' ' || last_name as 사원명
+        , hire_date as 입사일자 -- 'RR/MM/DD'
+        , to_char(hire_date, 'yyyy-mm-dd hh24:mi:ss') as 입사일자2    
+    from employees
+    where '05/01/01' <= hire_date and hire_date <= '06/12/31'
+    order by 3; -- 틀린 풀이!!
+    
+    --- !!!!! 중요 !!!!  날짜를 나타낼때 시,분,초 가 없는 년,월,일만 나타내어주면 자동적으로 0시0분0초가 된다.
+    ---                 즉, 자정(그날의 시작)을 뜻한다.
+    
+    select employee_id as 사원번호
+        , first_name || ' ' || last_name as 사원명
+        , hire_date as 입사일자 -- 'RR/MM/DD'
+        , to_char(hire_date, 'yyyy-mm-dd hh24:mi:ss') as 입사일자2    
+    from employees
+    where '05/01/01' <= hire_date and hire_date <= '07/01/01'
+    order by 3; -- 올바른 풀이!! (부등호는 날짜도 된다)
+    
+    
+   ---------------------------------------------------------------------------------------------------
+   
+   ---- *** ==== 문자의 표시 및 출력 === *** ----
+   
+   'A' --> 65
+    'a' --> 97
+    '0' --> 48
+    ' ' --> 32
+    
+    select ascii('A'), ascii('a'), ascii('0'), ascii(' ')
+    from dual;
+    --          65	           97	     48	         32
+    
+    select chr(65), chr(97), chr(48), chr(32)
+    from dual;
+    --          A	     a	      0
+    
+    -- employees 테이블에서 first_name 컬럼이 'Elj' 부터 'I' 까지인 데이터를 가지는
+    -- 사원들만 first_name 을 출력하세요.
+    select first_name
+    from employees
+    where 'Elj' <= first_name and first_name <= 'I'
+    order by 1;
+    -- 'Elj' 'Elja' 'Eljast' 'Eljxasf' ~~~~~~~~~~~~~~ 'HAsd' 'I' / 'IA'
+    
+    select first_name
+    from employees
+    where first_name between 'Elj' and 'I'
+    order by 1;
+   
+   
+   ----------------------------------------------------------------------------------------------------
+   
+   ------ *** employees 테이블에 jubun(주민번호) 이라는 컬럼을 추가해봅니다. *** --------
+   /*
+       jubun(주민번호) 컬럼의 값을 입력할때는 '-' 는 빼고 숫자로만 입력할 것입니다.
+       jubun(주민번호) 컬럼의 값을 입력할 때 맨 처음 첫자리에 0 이 들어올 수 있다라면 
+       number 타입이 아니라 varchar2 타입으로 해야 한다.
+       왜냐하면 number 타입으로 해주면 맨 앞에 입력한 값이 0 일때는 0이 생략 되어지기 때문이다.
+       맨 앞의 0 도 나오게 하려면 컬럼의 데이터 타입은 varchar2 가 되어야 한다.
+   */
+   select  0105053234567, '0105054234567'
+   from dual;
+   
+   
+   alter table employees
+   add jubun varchar2(13);
+   -- Table EMPLOYEES이(가) 변경되었습니다.
+
+   desc employees;
+   
+   select *
+   from employees;
+   
+   update employees set jubun = '6010151234567'
+   where employee_id = 100;
+   
+   rollback; 
+   -- 롤백 완료
+   -- commit; 한 후에 DML(Data Menuplation Language[데이터조작어] ==> insert, update,  delete, merge 
+   -- 명령어로 변경되어진 것을 이전상태로 되돌리는 것(김현정-멍)
+   
+   update employees set jubun = '6010151234567'
+   where employee_id = 100;
+   -- 1 행 이(가) 업데이트되었습니다.
+   
+   commit;
+   -- DML(Data Menuplation Language[데이터조작어] ==> insert, update,  delete, merge 
+   -- 명령어로 변경되어진 것을 디스크에 적용시키는 것이다.
+   -- 커밋 완료.
+   -- commit; 한 이후로 rollback; 해봐야 이전 상태로 되돌아가지 않는다.
+   
+   ----------------------------------------------------------------------------------------------------------
+    
+    ------------- ***** ===== like 연산자 ===== ***** --------------
+    -- like = ~와 같은
+    
+    /*
+        like 연산자와 함께 사용되어지는 % 와 _ 를 wild character 라고 부른다.
+        like 연산자와 함께 사용되어지는 % 의 뜻은 글자수와는 관계없이 글자가 있든지 없든지 관계없다라는 말이고,
+        like 연산자와 함께 사용되어지는 _ 의 뜻은 반드시 아무글자 1개만을 뜻하는 것이다.
+    */
+    
+    -- employees 테이블에서 first_name 컬럼의 값이 's'로 끝나는 사원들만
+    -- 사원번호, 이름, 성, 주민번호를 나타내세요.
+    select employee_id as "사원번호"
+         , last_name as "이름"
+         , first_name as "성"
+         , jubun as "주민번호"
+    from employees
+    where first_name like '%s';  
+    
+    -- employees 테이블에서 first_name 컬럼의 값이 'ee'라는 글자가 들어있는 사원들만
+    -- 사원번호, 이름, 성, 주민번호를 나타내세요.
+    select employee_id as "사원번호"
+         , last_name as "이름"
+         , first_name as "성"
+         , jubun as "주민번호"
+    from employees
+    where first_name like '%ee%';   
+    
+    -- employees 테이블에서 first_name 컬럼의 값이 'ee'라는 글자가 들어있는 사원들만
+    -- 사원번호, 이름, 성, 주민번호를 나타내세요.
+    select employee_id as "사원번호"
+         , last_name as "이름"
+         , first_name as "성"
+         , jubun as "주민번호"
+    from employees
+    where first_name like '%e%e%';   
+    
+    -- employees 테이블에서 last_name 컬럼의 값이 첫글자는 'F' 이고 두번째 글자는 아무거나 이고
+    -- 세번째 글자는 소문자 'e' 이며 4번째 부터는 글자가 있든지 없든지 상관없는 사원들만 
+    -- 사원번호, 이름, 성, 기본급여를 나타내세요. 
+    select employee_id as "사원번호"
+         , last_name as "이름"
+         , first_name as "성"
+         , salary as "기본급여"
+    from employees
+    where last_name like 'F_e%'; 
+    
+    
+     ---- *** like 연산자와 함께 사용되어지는 % 와 _ 인 wild character 의 기능을 escape(탈출) 시키기
+     
+    create table tbl_watch
+    (watch_name varchar2(10)    -- watch_name 컬럼에 들어올 수 있는 데이터는 문자열 최대 10byte 까지만 허용한다.
+    ,bigo       Nvarchar2(100)  -- bigo 컬럼에 들어올 수 있는 데이터는 문자열 최대 100글자 까지만 허용한다. 
+    );
+    -- Table TBL_WATCH이(가) 생성되었습니다.
+    
+    insert into tbl_watch(watch_name, bigo) values('금시계', '순금 99.99% 함유 고급시계');
+    insert into tbl_watch(watch_name, bigo) values('은시계', '고객만족도 99.99점 획득한 고급시계');
+    
+    commit;
+    
+    --- tbl_watch 테이블에서 bigo 컬럼에 99.99% 라는 글자가 들어있는 행만 추출하세요.
+    select *
+    from tbl_watch
+    where bigo like '%99.99\%%' escape '\';
+    --  escape 문자로 '\' 을 주었으므로 '\' 다음에 나오는 % 1개만 wild character 기능에서 탈출시켜 버리므로 % 는 진짜 글자 퍼센트(%) 로 된다.
+    
+    select *
+    from tbl_watch
+    where bigo like '%99.99a%%' escape 'a';
+    
+    select *
+    from tbl_watch
+    where bigo like '%99.991%%' escape '1';
+    
+    -- 숫자는 헷갈리므로 구분이 쉬운 문자를 사용하자.
+    
+    -------------------------------------------------------------------------------------------------------
+    
+     ---- >> 단일행 함수 << ----
+ 
+        ※ 단일행 함수의 종류
+        1. 문자 함수
+        2. 숫자 함수
+        3. 날짜 함수
+        4. 변환 함수
+    
+    ------------- >> 1. 문자 함수 << -----------------------
+    
+    -- 1.1 upper('문자열') ==> '문자열' 을 모두 대문자로 변환시켜주는 것.
+    select 'kOreA SEoul', upper('kOreA SEoul')
+    from dual;
+    --      kOreA SEoul	    KOREA SEOUL
+    
+    -- 1.2 lower('문자열') ==> '문자열' 을 모두 소문자로 변환시켜주는 것.
+    select 'kOreA SEoul', lower('kOreA SEoul')
+    from dual;
+    --      kOreA SEoul 	korea seoul
+    
+    -- 1.3 initcap('문자열') ==> '문자열' 을 단어별(구분자 공백)로 첫글자만 대문자, 나머지는 모두 소문자로 변환시켜주는 것.
+    select 'kOreA SEoul', initcap('kOreA SEoul')
+    from dual;
+    --      kOreA SEoul	    Korea Seoul
+    
+    -- 1.4 substr('문자열', 시작글자번호, 뽑아야할글자수)
+    --     ==> '문자열' 중에 문자열의 일부분을 선택해올 때 사용한다..
+    --     ==> Java는 처음 번호가 0 이지만, DB는 처음 번호가 1이다.
+    
+    select '쌍용교육센터'
+         , substr('쌍용교육센터',2,3)  -- '쌍용교육센터; 에서 2번째 글자인 '용' 부터 3글자만 뽑아온다.
+         , substr('쌍용교육센터',2)  -- '쌍용교육센터; 에서 2번째 글자인 '용' 부터 끝까지 뽑아온다.
+    from dual;
+    -- 쌍용교육센터   용교육     용교육센터
+    
+    [예제1]
+    --- *** substr()함수를 사용하여 employees 테이블에서 성별이 '여자'인 사원들만 
+    --      사원번호, 사원명, 주민번호를 나타내세요. *** 
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , jubun as "주민번호"
+    from employees
+    where substr(jubun, 7, 1) in ('2', '4');
+    
+    [예제2]
+    --- *** substr()함수를 사용하여 employees 테이블에서 1990년 ~ 1995년에 태어난 사원들중 
+    --      성별이 '남자'인 사원들만 사원번호, 사원명, 주민번호를 나타내세요. ***
+    
+    select employee_id as "사원번호"
+         , first_name || ' ' || last_name as "사원명"
+         , jubun as "주민번호"
+    from employees
+    where substr(jubun, 1, 2) between '90' and '95' and
+          substr(jubun, 7, 1) = '1';
+          
+    -- 1.5  instr : 어떤 문자열에서 명명된 문자열의 위치를 알려주는 것 **** ---
+    select '쌍용교육센터 서울교육대학교 교육문화원'
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 1, 1) -- 3
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 1 번째 부터 1 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 1, 2) -- 10
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 1 번째 부터 2 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 4, 1) -- 10
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 4 번째 부터 1 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 4, 3) -- 0
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 4 번째 부터 3 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         --  그러한 값이 없다라면 0 이 나온다.
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 1) -- 3
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 1 번째 부터 1 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         --  출발점만 나오면 뒤에 , 1 이 생략된 것이다.
+         
+         , instr('쌍용교육센터 서울교육대학교 교육문화원', '교육', 4) -- 10
+         --  '쌍용교육센터 서울교육대학교 교육문화원' 에서 '교육' 이 나온 위치를 찾는데
+         --  출발점이 4 번째 부터 1 번째로 나오는 '교육'의 위치를 알려달라는 말이다.
+         --  출발점만 나오면 뒤에 , 1 이 생략된 것이다.
+    from dual;     
+    
+    
+    -- 1.6  reverse : 어떤 문자열을 거꾸로 보여주는 것이다. **** ---
+    select 'ORACLE', reverse('ORACLE')
+         , '대한민국', reverse('대한민국'),  reverse( reverse('대한민국') )
+    from dual;
+    
+    ------ [퀴즈] -------
+    create table tbl_files
+    (fileno      number(3)
+    ,filepath    varchar2(200)
+    );
+    
+    insert into tbl_files(fileno, filepath) values(1, 'c:\myDocuments\resume.hwp');
+    insert into tbl_files(fileno, filepath) values(2, 'd:\mymusic.mp3');
+    insert into tbl_files(fileno, filepath) values(3, 'c:\myphoto\2021\07\face.jpg');
+    
+    commit;
+    
+    select fileno, filepath
+    from tbl_files;
+
+    --- 아래와 같이 나오도록 select 문을 완성하세요. ---
+    /*
+    ---------------------------------------------
+     파일번호       파일명
+    ---------------------------------------------
+       1          resume.hwp
+       2          mymusic.mp3
+       3          face.jpg
+    */
+    select fileno
+         , substr(filepath, length(filepath) - instr(reverse(filepath),'\',1) +2)
+         , length(filepath)
+    from tbl_files;
+    -- 나의 졸작(누더기)
+    
+    --선생님의 모범답안
+    select fileno, filepath, reverse(filepath),
+       -- substr( reverse(filepath), 1, ? )
+       -- ==> ? 는 봅아야 할 글자길이인데 reverse(filepath) 에서 최초로 '\' 가 나오는 위치 -1이다.
+       -- ==> instr( reverse(filepath), '\', 1)
+           substr( reverse(filepath), 1, instr( reverse(filepath), '\', 1)-1 ),
+           reverse(  substr( reverse(filepath), 1, instr( reverse(filepath), '\', 1)-1 ) )
+    from tbl_files;
+    
+    select fileno as "파일번호"
+         , reverse(  substr( reverse(filepath), 1, instr( reverse(filepath), '\', 1)-1 ) ) as "파일명"
+    from tbl_files;
+                                 
