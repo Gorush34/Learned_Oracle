@@ -1,0 +1,57 @@
+ -- 5.3 greatest, least
+    select greatest(10, 90, 100, 80)  -- 나열되어진 것들 중 제일 큰 값을 알려줌.
+         , least(10, 90, 100, 80)     -- 나열되어진 것들 중 제일 작은 값을 알려줌.
+    from dual;
+    -- 100	10
+    
+    select greatest('김유신', '허준', '고수', '엄정화')
+         , least('김유신', '허준', '고수', '엄정화')
+    from dual;
+    -- 허준	고수(글자의 경우 ㄱ~ㅎ 순서)
+    
+    -- 5.4 rank ==> 등수(석차) 구하기, dense_rank ==> 서열구하기
+    -- ** 잘씀   몇 등인지(공동순위 있을시 4->6), 몇 번째인지(공동순위 있을시 4->5)
+    -- where절에 막바로 사용 불가 => inline view 를 통해 보여줄 수 있음
+    select employee_id AS 사원번호
+         , first_name || '' || last_name AS 사원명
+         , nvl( salary + (salary * commission_pct), salary) AS 월급
+         , rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) AS 월급등수
+         , dense_rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) AS 월급서열
+    from employees;
+    -- rank() over( order by 기준 오름/내림차순)    
+        
+         select employee_id AS 사원번호
+         , first_name || '' || last_name AS 사원명
+         , nvl( salary + (salary * commission_pct), salary) AS 월급
+         , department_id AS 부서번호
+         , rank() over( partition by department_id
+                        order by nvl( salary + (salary * commission_pct), salary) desc) AS 부서내월급등수
+         , rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) AS 전체월급등수
+         , dense_rank() over( partition by department_id
+                              order by nvl( salary + (salary * commission_pct), salary) desc) AS 부서내월급서열
+         , dense_rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) AS 전체월급서열
+
+    from employees
+    order by department_id;
+    
+    -- employees 테이블에서 월급이 가장 많이 버는 등수로 1등부터 10등까지인 사원들만
+    -- 사원번호, 사원명, 월급, 등수를 나타내세요.
+    -- partition by 구분기준
+    
+    select *
+    from employees;
+    where rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) between 1 and 10;
+    -- 오류 rank() 및 dense_rank() 함수는 where 절에 막바로 사용할 수 없기 때문에 inline view를 통해서 해야 한다.
+    
+    
+    select V.*
+    from
+    (
+    select employee_id, first_name || ' ' || last_name AS FULL_NAME
+         , nvl( salary + (salary * commission_pct), salary) AS MONTH_SAL
+         , rank() over( order by nvl( salary + (salary * commission_pct), salary) desc) AS RANK_MONTH_SAL
+    from employees
+    ) V
+    where V.RANK_MONTH_SAL between 1 and 10;
+    
+    -- where 절과 select절의 V는 생략 가능하다. --
