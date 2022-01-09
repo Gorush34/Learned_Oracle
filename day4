@@ -55,3 +55,544 @@
     where V.RANK_MONTH_SAL between 1 and 10;
     
     -- where 절과 select절의 V는 생략 가능하다. --
+    
+        /*
+        --- [퀴즈] ---
+        employees 테이블에서 모든 사원들에 대해
+        사원번호, 사원명, 주민번호, 성별, 현재나이, 월급, 입사일자, 정년퇴직일, 정년까지근무개월수, 퇴직금 을 나타내세요.
+        
+        여기서 정년퇴직일이라 함은 
+        해당 사원의 생월이 3월에서 8월에 태어난 사람은 
+        해당사원의 나이(한국나이)가 63세가 되는 년도의 8월 31일로 하고,
+        해당사원의 생월이 9월에서 2월에 태어난 사람은 
+        해당사원의 나이(한국나이)가 63세가 되는 년도의 2월말일(2월28일 또는 2월29일)로 한다.
+   
+        정년까지근무개월수 ==> 입사일자로 부터 정년퇴직일 까지 개월차이 
+        months_between(정년퇴직일, 입사일자)
+        
+        퇴직금 ==> 근무년수 * 월급       26개월근무 ==> 2년2개월 ==> 2년*월급
+        
+    */
+    
+        select employee_id as "사원번호"
+           , first_name || ' ' || last_name as "사원명"
+           , jubun as " 주민번호"
+           , case when substr(jubun, 7, 1) in('1', '3') then '남' else '여' end as "성별"
+           , extract(year from sysdate) - ( substr(jubun, 1, 2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 as "현재나이"       
+           , nvl(salary + (salary * commission_pct), salary) as "월급"
+           , hire_date as "입사일자"
+           -- 정년퇴직일은 해당사원의 나이(한국나이)가 63세가 되는 년도
+           -- 어떤 사원의 현재 나이가 62세 => 63세가 되는 년도 add_months(sysdate, (63-62)*12)
+           -- 어떤 사원의 현재 나이가 40세 => 63세가 되는 년도 add_months(sysdate, (63-40)*12)
+           -- 어떤 사원의 현재 나이가 57세 => 63세가 되는 년도 add_months(sysdate, (63-57)*12)
+           -- to_char( add_months(sysdate, (63-현재나이)*12), 'yyyy') || '-08-31'
+           , last_day( to_char( add_months(sysdate, (63-( extract(year from sysdate) - ( substr(jubun,1,2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 ))*12), 'yyyy') || 
+                      case when to_number( substr(jubun,3,2) ) between 3 and 8 then '-08-01' else '-02-01' end  
+                     ) AS 정년퇴직일
+ --          , months_between(정년퇴직일, hire_date) as "정년까지근무개월수"
+           , trunc(
+             months_between(last_day( to_char( add_months(sysdate, (63-( extract(year from sysdate) - ( substr(jubun,1,2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 ))*12), 'yyyy') || 
+                                      case when to_number( substr(jubun,3,2) ) between 3 and 8 then '-08-01' else '-02-01' end  
+                                    ), hire_date) 
+              ) as "정년까지근무개월수"
+        -- , trunc( 정년까지근무개월수/12 ) * 월급  as "퇴직금"   
+           , trunc( trunc(
+                    months_between(last_day( to_char( add_months(sysdate, (63-( extract(year from sysdate) - ( substr(jubun,1,2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 ))*12), 'yyyy') || 
+                                             case when to_number( substr(jubun,3,2) ) between 3 and 8 then '-08-01' else '-02-01' end  
+                                            ), hire_date) 
+              ) /12 ) * nvl(salary + (salary * commission_pct), salary) as "퇴직금"
+    from employees;
+    
+    
+        -- 너무 복잡해서 머리아픔 view를 사용하자!!!!!!!!!!!!!!!
+    ---------------------------------------------------------------------------------------------------------------------
+    ------ "inline view" 를 사용하여 구해봅시다. !!!!! ---------------
+    -- Java와 연동해야되기 때문에 별명도 영어를 써라 이제부터.
+    -- 인라인 뷰 안에 있는것은 V.컬럼명 써야되는데 생략 가능.
+    select v.employee_id, FULL_NAME, jubun, gender, age, month_sal, hire_date
+    --   , to_char( add_months(sysdate, (63-현재나이)*12), 'yyyy') || '-08-31'
+         , last_day(
+                    to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                    case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                    ) AS 정년퇴직일
+    --   , months_between(정년퇴직일, hire_date) as "정년까지근무개월수"
+         , trunc(
+                 months_between(last_day(
+                                         to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                                         case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                                         ), hire_date) 
+                ) as "정년까지근무개월수"
+    -- , trunc( 정년까지근무개월수/12 ) * 월급  as "퇴직금" 
+       , trunc( 
+                trunc(
+                        months_between(last_day(
+                                                to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                                                case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                                                ), hire_date) 
+                    ) /12 
+              ) * month_sal  as "퇴직금" 
+    from
+    (
+    select employee_id
+         , first_name || ' ' || last_name AS FULL_NAME
+         , jubun
+         , case when substr(jubun, 7, 1) in('1', '3') then '남' else '여' end AS GENDER
+         , extract(year from sysdate) - ( substr(jubun, 1, 2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 as AGE
+         , nvl(salary + (salary * commission_pct), salary) as MONTH_SAL
+         , hire_date 
+    from employees
+    ) V; -- V를 "inline view" 라고 부른다. ** 짱 많이씀.
+    
+    
+    
+    
+    ---- **** !!!!! 아주 중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요중요 아주 !!!!!!!!!!!!!! ********* -----------
+    -- VIEW(뷰)란? 테이블은 아니지만 select 되어진 결과물을 마치 테이블 처럼 보는것(간주하는 것)이다.
+    
+    -- VIEW(뷰) 는 2가지 종류가 있다.
+    -- 첫번째로 inline view 가 있고, 두번째로 stored view 가 있다. 
+    -- inline view 는 바로 위의 예제에 보이는 V이다. 즉, select 구문을 괄호( )를 쳐서 별칭(예 : V)을 부여한 것을 말한다.
+    -- stored view 는 복잡한 SQL(Structured Query Language == 정형화된 질의어)을 저장하여 select 문을 간단하게 사용하고자 할 때 쓰인다.
+    -- 그래서 inline view 는 1회성이고, stored view는 언제든지 불러내서 재사용이 가능하다.
+    
+        --- *** Stored View(저장된 뷰) 생성하기 *** ---
+    /*
+        create or replace view 뷰명   --> 만약에 저장된 뷰로 뷰명이 없으면 새로이 생성(create)해주고, 
+                                         뷰명이 이미 존재한다라면 그 이전의 select 문은 없애고 지금의 select 문으로 바꿔라(replace)는 말이다.
+        as 
+        select 문;
+    */
+    create or replace view view_employee_retire
+    as
+    select employee_id, first_name || ' ' || last_name AS FULL_NAME
+         , salary, department_id
+    from employees
+    where department_id in (20, 30);
+    -- View VIEW_EMPLOYEE_RETIRE이(가) 생성되었습니다.
+
+    select *
+    from view_employee_retire;
+    
+    
+    create or replace view view_employee_retire
+    as
+    select v.employee_id, FULL_NAME, jubun, gender, age, month_sal, hire_date
+         , last_day(
+                    to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                    case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                    ) AS RETIREMENT_DATE
+         , trunc(
+                 months_between(last_day(
+                                         to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                                         case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                                         ), hire_date) 
+                ) as RETIRE_WORKING_MONTHS_NUM
+       , trunc( 
+                trunc(
+                        months_between(last_day(
+                                                to_char( add_months(sysdate, (63-age)*12), 'yyyy') ||
+                                                case when to_number( substr(jubun, 3, 2) ) between 3 and 8 then '-08-01' else '-02-01' end 
+                                                ), hire_date) 
+                    ) /12 
+              ) * month_sal  as SEVERANCE_PAY 
+    from
+    (
+    select employee_id
+         , first_name || ' ' || last_name AS FULL_NAME
+         , jubun
+         , case when substr(jubun, 7, 1) in('1', '3') then '남' else '여' end AS GENDER
+         , extract(year from sysdate) - ( substr(jubun, 1, 2) + case when substr(jubun, 7, 1) in('1','2') then 1900 else 2000 end ) + 1 as AGE
+         , nvl(salary + (salary * commission_pct), salary) as MONTH_SAL
+         , hire_date 
+    from employees
+    ) V;
+    -- View VIEW_EMPLOYEE_RETIRE이(가) 생성되었습니다.
+    -- 테이블명, 컬럼명은 30글자 넘어가면 안된다!
+    
+        select * from tab;
+    
+    select *
+    from view_employee_retire;
+    
+    desc view_employee_retire;
+    
+    select *
+    from view_employee_retire
+    where gender = '여' and trunc(age, -1) in (40, 50);
+    
+    select *
+    from view_employee_retire
+    where gender = '남' and retire_working_months_num >= 500;
+    
+        ---  Stored View(저장된 뷰) 가 뭐가 있는지 알아봅니다. ---
+    select *
+    from user_views;
+    
+    ---  Stored View(저장된 뷰) 중에 VIEW_EMPLOYEE_RETIRE 의 원본소스를 알아봅니다. ---
+    select text
+    from user_views
+    where view_name = 'VIEW_EMPLOYEE_RETIRE';
+    -- Oracle은 컬럼명, 데이터명은 대문자로 인식합니다.(컬럼명, 데이터명은 대/소문자를 구분하기 때문에)
+    
+    
+        --5.5 lag 함수, lead 함수
+    --    ==> 게시판에서 특정글을 조회할 때 많이 사용합니다!!
+    
+    create table tbl_board
+    (boardno       number                -- 글번호 
+    ,subject       varchar2(4000)        -- 글제목   varchar2 의 최대크기는 4000 이다. 4000 보다 크면 오류!!!
+    ,content       Nvarchar2(2000)       -- 글내용   Nvarchar2 의 최대크기는 2000 이다. 2000 보다 크면 오류!!!
+    ,userid        varchar2(40)          -- 글쓴이의 ID
+    ,registerday   date default sysdate  -- 작성일자   default sysdate 은 데이터 입력시 registerday 컬럼의 값을 생략하면 기본적으로 sysdate 가 입력된다는 말이다. 
+    ,readcount     number(10)            -- 조회수
+    );
+    
+    insert into tbl_board(boardno, subject, content, userid, registerday, readcount)
+    values(1, '안녕하세요', '글쓰기 연습입니다', 'leess',  sysdate, 0);  
+    -- 1 행 이(가) 삽입되었습니다.
+    
+    insert into tbl_board
+    values(2, '반갑습니다', '모두 취업대박 나십시오', 'eomjh',  sysdate, 0);  
+    -- 1 행 이(가) 삽입되었습니다.
+    
+    insert into tbl_board(subject, boardno, content, userid, registerday, readcount)
+    values('건강하세요', 3, '로또 1등을 기원합니다', 'youks',  sysdate, 0); 
+    -- 1 행 이(가) 삽입되었습니다.
+    
+    insert into tbl_board(boardno, subject, content, userid, registerday, readcount)
+    values(4, '기쁘고 감사함이 넘치는 좋은 하루되세요', '늘 행복하세요', 'leess',  default, 0);
+    -- 1 행 이(가) 삽입되었습니다.
+    
+    insert into tbl_board(boardno, subject, content, userid, readcount)
+    values(5, '오늘도 좋은 하루되세요', '늘 감사합니다', 'hongkd', 0);
+    -- 1 행 이(가) 삽입되었습니다.
+    
+    commit;
+    -- 커밋 완료.
+
+    select *
+    from tbl_board;
+    
+    select boardno
+         , case when length(subject) > 7 then substr(subject, 1, 5) || '..' else subject end AS subject
+         , to_char(registerday, 'yyyy-dd-mm hh24:mi:ss')
+    from tbl_board
+    order by boardno desc;
+    
+    
+    /*
+    -------------------------------------------------------------------------------------------------------------------------------------------
+    이전글번호   이전글제목   이전글작성일자             글번호  글제목     글작성일자                 다음글번호      다음글제목      다음글작성일자
+    -------------------------------------------------------------------------------------------------------------------------------------------
+    4	       기쁘고 감..	2022-07-01 10:24:54     5	오늘도 좋..	2022-07-01 10:26:15      null           null        null  
+    3	       건강하세요     2022-07-01 10:23:59     4	기쁘고 감..	2022-07-01 10:24:54      5	오늘도 좋..	2022-07-01 10:26:15
+    2	       반갑습니다	    2022-07-01 10:23:03     3	건강하세요    2022-07-01 10:23:59      4	 기쁘고 감..	2022-07-01 10:24:54
+    1	       안녕하세요	    2022-07-01 10:20:53     2	반갑습니다	2022-07-01 10:23:03      3	건강하세요    2022-07-01 10:23:59
+    null         null        null                   1	안녕하세요	2022-07-01 10:20:53      2	반갑습니다	2022-07-01 10:23:03
+    */
+         -- lead(대상A, 수) over( order by 대상B 오름/내림차순 )
+         --  대상A을  내린다     대상B의 오름/내림차순에 있는 것을
+    select lead(boardno, 1) over(order by boardno desc) AS 이전글번호
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 아래쪽으로 1칸 내려간 행의 boardno 값을 가져오는 것이다.
+         , lead(subject, 1) over(order by boardno desc) AS 이전글제목
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 아래쪽으로 1칸 내려간 행의 subject 값을 가져오는 것이다.
+         , lead(registerday, 1) over(order by boardno desc) AS 이전글작성일자
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 아래쪽으로 1칸 내려간 행의 registerday 값을 가져오는 것이다.
+         
+         , boardno
+         , subject
+         , registerday
+         
+         , lag(boardno, 1) over(order by boardno desc) AS 다음글번호
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 위쪽으로 1칸 올라간 행의 boardno 값을 가져오는 것이다.
+         -- 숫자가 없으면 1이 생략된 것이다.
+         , lag(subject, 1) over(order by boardno desc) AS 다음글제목
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 위쪽으로 1칸 올라간 행의 subject 값을 가져오는 것이다.
+         , lag(registerday, 1) over(order by boardno desc) AS 다음글작성일자
+         -- boardno(글번호) 컬럼의 값을 내림차순으로 정렬했을때 위쪽으로 1칸 올라간 행의 registerday 값을 가져오는 것이다.
+    from
+    (
+    select boardno
+         , case when length(subject) > 7 then substr(subject, 1, 5) || '..' else subject end AS SUBJECT
+         , to_char(registerday, 'yyyy-dd-mm hh24:mi:ss') AS REGISTERDAY
+    from tbl_board
+    ) V;
+    
+    
+        ---------------------------------------------------------------------
+    -- *** case when then else end 구문을 사용하여 로그인 메시지 보여주기 *** --
+    
+    create table tbl_members
+    (userid    varchar2(20)
+    ,passwd    varchar2(20)
+    ,name      varchar2(20)
+    ,addr      varchar2(100)
+    );
+    
+    insert into tbl_members(userid, passwd, name, addr)
+    values('kimys','abcd','김유신','서울');
+    
+    insert into tbl_members(userid, passwd, name, addr)
+    values('young2','abcd','이영이','서울');
+    
+    insert into tbl_members(userid, passwd, name, addr)
+    values('leesa','abcd','이에리사','서울');
+    
+    insert into tbl_members(userid, passwd, name, addr)
+    values('park','abcd','박이남','서울');
+    
+    insert into tbl_members(userid, passwd, name, addr)
+    values('leebon','abcd','이본','서울');
+    
+    commit;  
+    
+    select *
+    from tbl_members;
+    
+    select count(*) -- select 되어져 나온 결과물의 행의 개수 ==> 5
+    from tbl_members;
+    
+    select *
+    from tbl_members
+    where userid = 'kimys' and passwd = 'abasdsdsdd';
+    
+    select count(*) -- select 되어져 나온 결과물의 행의 개수 ==> 0
+    from tbl_members
+    where userid = 'kimys' and passwd = 'abasdsdsdd';
+    
+    select *
+    from tbl_members
+    where userid = 'wewrere' and passwd = 'abcd';
+    
+    select count(*) -- select 되어져 나온 결과물의 행의 개수 ==> 0
+    from tbl_members
+    where userid = 'wewrww' and passwd = 'abcd';
+    
+    /*
+       -- [퀴즈] --
+       tbl_members 테이블에서    
+       userid 및 passwd 가 모두 올바르면 '로그인성공' 을 보여주고,    
+       userid 는 올바르지만 passwd 가 틀리면 '암호가 틀립니다' 을 보여주고,
+       userid 가 존재하지 않으면 '아이디가 존재하지 않습니다' 을 보여주려고 한다.
+    */
+    
+    select case ( select count(*)
+                  from tbl_members
+                  where userid = 'kimys' and passwd = 'abcd')
+           when 1 then '로그인성공'
+           else (
+                  case ( select count(*)
+                         from tbl_members
+                         where userid = 'kimys' )
+                  when 1 then '암호가 틀립니다'
+                  else '아이디가 존재하지 않습니다' 
+                  end
+                )
+           end AS 로그인결과
+    from dual;
+    
+    
+        --------------------------------------------------------------------------------------------
+    
+    ---- >> 그룹함수(집계함수) 아주아주중요<< ----
+ 
+    /*
+        1. sum      -- 합계
+        2. avg      -- 평균
+        3. max      -- 최대값
+        4. min      -- 최소값
+        5. count    -- select 되엉서 나온 결과물의 행의 개수
+        6. variance -- 분산
+        7. stddev   -- 표준편차
+        
+        분산 : 분산의 제곱근이 표준편차    (평균에서 떨어진 정도)
+        표준편차 : 표춘편차의 제곱승이 분산 (평균과의 차액)
+        
+        ex) >> 주식투자 <<
+        A - 50  60  40  50  55  45  52  48  평균 50 A는 B보다 상대적으로 편차가 적음
+        B - 10  90  20  80  30  70  90  10  평균 50 A는 B보다 상대적으로 편차가 큼
+        
+        분산과 표준편차는 어떤의사결정시 도움이 되는 지표이다.
+        
+        
+    */
+    select salary, to_char(salary, '$99,999')
+    from employees; -- 107개행  107개행
+    
+    select sum(salary) -- 그룹함수는 결과물이 1개행만 나온다. 다각형모양
+    from employees;
+    
+     select salary, sum(salary) -- 오류, r모양이 나오기때문에 다각형 형성이안됨
+    from employees;             -- 테이블은 사각형모양을 형성해야 출력가능
+    
+    --- !!!!!!! 중요중요 !!!!!!! ---
+    -- 그룹함수(집계함수)에서는 null 이 있으면 무조건 null 은 제외시킨 후 연산을 한다!!
+    -- 그룹함수(집계함수)를 사용하면 1개의 결과물을 가진다.
+    select 1+100+5234+null
+    from dual;
+    
+    select sum(salary * commission_pct)  -- 73690
+    from employees;
+    
+    select sum(salary * commission_pct)  -- 73690
+    from employees
+    where commission_pct is not null;
+    
+    select sum(salary * commission_pct)
+         , count(salary)            -- 107
+         , count(commission_pct)    -- 35
+    from employees;
+    
+    select count(*)                 -- 107
+         , count(department_id)     -- 106(한분 미배정)
+         , count(EMPLOYEE_ID)       -- 107
+         , count(EMAIL)             -- 107
+    from employees;
+    
+    select sum(salary * commission_pct)     -- 합계
+         , avg(salary * commission_pct)     -- 평균
+         , max(salary * commission_pct)     -- 최대값
+         , min(salary * commission_pct)     -- 최소값
+         , min(salary * commission_pct)     -- null 을 제외한 개수
+         , variance(salary * commission_pct)    -- 분산
+         , stddev(salary * commission_pct)  -- 편차
+    from employees;
+    
+    ------ **** avg() 평균을 구하실때는 주의를 요합니다. **** ------
+    
+    -- employees 테이블에서 수당액(salary * commission_pct)의 평균을 나타내세요.
+    select sum(salary * commission_pct) / count(salary * commission_pct)
+        -- 2105.428571428571428571428571428571428571 ==> commission_pct 가 있는 35명의 평균
+         , avg(salary * commission_pct)
+        -- 2105.428571428571428571428571428571428571 ==> commission_pct 가 있는 35명의 평균
+        
+         , sum(salary * commission_pct) / count(*) -- 수당액을 받는 35명의 합을 107명(전체)으로 나눈 것
+         
+         , sum( nvl( avg(salary * commission_pct, 0) ) ) / count(  avg( nvl(salary * commission_pct, 0) ) )
+         -- 수당액을 받는 35명의 합을 107명(전체)으로 나눈 것
+         ,  avg( nvl(salary * commission_pct, 0) )
+         -- 수당액을 받는 35명의 합을 107명(전체)으로 나눈 것
+    from employees;
+    
+    select salary * commission_pct
+         , nvl(salary * commission_pct, 0)
+    from employees;
+    
+    select count(salary * commission_pct)
+         , count( nvl(salary * commission_pct, 0) )
+    from employees;
+    
+        ---- *** 그룹함수(집계함수)와 함께 사용되어지는 group by 절에 대해서 알아봅니다. *** ----
+    
+    --- employees 테이블에서 부서번호별로 인원수를 나타내세요. ---
+    
+    
+    
+    /*
+        ------------------------------------------
+        부서번호    인원수
+        ------------------------------------------
+          10        1
+          20        2
+          30        6
+          40        1
+          50        45
+         ....      ....
+         -- group by 로 묶었을떄 반드시 묶은 기준을 select로 보여줘야 한다.
+   */   
+   
+   select department_id AS 부서번호
+        , count(*) AS 인원수
+   from employees
+   group by department_id -- department_id 컬럼의 값이 같은것 끼리 그룹을 짓는다.
+   order by 1;
+   
+   
+   --- employees 테이블에서 성별로 인원수를 나타내세요. ---
+   
+   /*
+        ------------------------------------------
+        부서번호    인원수
+        ------------------------------------------
+         남         56
+         여         51
+   */
+   select gender AS 성별, count(*) as 인원수
+   from
+   (
+   select case when substr(jubun,7,1) in(1, 3) then '남' else '여' end as GENDER
+   from employees
+   ) V
+   group by GENDER
+   order by 1;
+   
+   
+   ---- [퀴즈] employees 테이블에서 연령대별로 인원수를 나타내세요. ----
+   /*
+      -------------------
+       연령대       인원수
+      -------------------
+        10          16
+        20          18
+        30          21
+        40          20
+        50          16
+        60          16
+   */
+   
+   select age_line as 연령대, count(*) as 인원수
+   from
+   (
+   select trunc( ( extract(year from sysdate) - ( substr(jubun, 1, 2) + case when substr(jubun, 7, 1)  in('1','2') then 1900 else 2000 end ) + 1 ), -1) as age_line
+   from employees
+   ) V
+   group by V.age_line -- V. 생략가능
+   order by 1;
+   
+   
+   ----- ***** 1차 그룹, 2차 그룹 짓기 ***** -----
+   
+   --- employees 테이블에서 부서번호별, 성별 인원수를 나타내세요.. ---
+   /*
+      -------------------
+       부서번호  성별  인원수
+      -------------------   
+   
+   
+   */
+   select department_id as 부서번호
+        , gender as 성별
+        , count(*)as 인원수
+   from
+   (
+   select department_id
+        , case when substr(jubun,7,1) in(1, 3) then '남' else '여' end as GENDER
+   from employees
+   ) V
+   group by v.department_id, v.gender
+   order by 1;
+   
+   ---- [퀴즈] employees 테이블에서 연령대별, 성별 인원수를 나타내세요. ----
+   /*
+      -------------------------
+       연령대     성별    인원수
+      -------------------------
+        10        남     10
+        10        여     6
+        20        남     8
+        20        여     10
+        30        남     10
+        30        여     11
+        ...       ...
+   */
+    select AGE_LINE AS 연령대, GENDER AS 성별, count(*) AS 인원수
+    from
+    (
+    select trunc( ( extract(year from sysdate) - ( substr(jubun, 1, 2) + case when substr(jubun, 7, 1) in (1,2) then 1900 else 2000 end ) + 1 ) , -1) as AGE_LINE
+         , case when substr(jubun,7,1) in(1, 3) then '남' else '여' end as GENDER
+    from employees
+    ) V
+    group by v.age_line, v.gender
+    order by 1;
+    
+    
