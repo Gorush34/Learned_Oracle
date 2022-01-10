@@ -309,5 +309,251 @@
     -----------------------------------------------------------
     
 
+    select jepumname AS 제품명
+         , to_char(panmaedate, 'yyyy-mm-dd') AS 판매일자
+         , sum(panmaesu) AS 일별판매량
+         -- sum(누적되어야할 컬럼명) over(partition by 그룹화 되어질 컬럼명 
+         --                            order by 누적되어질 기준이 되는 컬럼명 asc[desc] )
+         , sum( sum(panmaesu) ) over(partition by jepumname
+                              order by to_char(panmaedate, 'yyyy-mm-dd') asc) AS 일별누적판매량
+    from tbl_panmae
+    group by jepumname, to_char(panmaedate, 'yyyy-mm-dd');
     
+    
+    
+    create or replace view VIEW_NUKUKPANMAE
+    as
+    select JEPUMNAME 
+         , to_char(panmaedate, 'yyyy-mm-dd') AS PANMAEDATE
+         , sum(panmaesu) AS DAILY_SALES
+         , sum( sum(panmaesu) ) over(partition by jepumname
+                              order by to_char(panmaedate, 'yyyy-mm-dd') asc) AS DAILY_NUJUK_SALES
+    from tbl_panmae
+    group by jepumname, to_char(panmaedate, 'yyyy-mm-dd');
+    
+    select *
+    from VIEW_NUKUKPANMAE
+    where jepumname in('감자깡', '새우깡');
+    
+    --- *** [퀴즈] tbl_paname 테이블에서 판매일자가 1개월전 '01'일(즉, 현재가 2022년 1월 10일 이므로 2021년 12월 1일) 부터 판매된 
+ --            모든 제품에 대해 일별판매량과 일별누적판매량을 나타내세요.. *** 
+    -- 복습할 것(뭘 써야될지 몰라서 못함)
+        
+ 
+
+    select jepumname AS 제품명
+             , to_char(panmaedate, 'yyyy-mm-dd') AS 판매일자
+             , sum(panmaesu) AS 일별판매량
+             , sum( sum(panmaesu) ) over(partition by jepumname
+                                  order by to_char(panmaedate, 'yyyy-mm-dd') asc) AS 일별누적판매량
+    from tbl_panmae 
+    where panmaedate >= to_date( to_char(add_months(sysdate, -1), 'yyyy-mm') || '-01', 'yyyy-mm-dd')
+    -- 또는 panmaedate >= last_day( add_months(sysdate, -2) ) +1
+    group by jepumname, to_char(panmaedate, 'yyyy-mm-dd');
+    
+    
+    -- 1개월 전을 나타내는 두가지 방법
+    select sysdate
+         , add_months(sysdate, -1)
+         , to_date( to_char(add_months(sysdate, -1), 'yyyy-mm') || '-01', 'yyyy-mm-dd')
+         , last_day( add_months(sysdate, -2) ) +1
+    from dual;
+    
+    ------ ==== *** 아래처럼 나오도록 하세요 *** ==== ------
+    ------------------------------------------------------------------
+     전체사원수  10대     20대     30대     40대     50대     60대
+    ------------------------------------------------------------------
+        107      16	      18	   21	    20	     16	      16        
+    ------------------------------------------------------------------
+    select count(AGELINE) AS 전체사원수
+         , sum( decode(AGELINE, 10, 1) ) AS "10대"
+         -- 별칭에 숫자가 먼저 올 경우 쌍따옴표를 붙이거나 문자를 먼저 붙여야함!
+         , sum( decode(AGELINE, 20, 1) ) AS "20대"
+         , sum( decode(AGELINE, 30, 1) ) AS "30대"
+         , sum( decode(AGELINE, 40, 1) ) AS "40대"
+         , sum( decode(AGELINE, 50, 1) ) AS "50대"
+         , sum( decode(AGELINE, 60, 1) ) AS "60대"
+    from
+    (
+    select trunc( (extract(year from sysdate) - ( substr(jubun,1 ,2) + case when substr(jubun,7,1) in ('1', '2') then 1900 else 2000 end ) + 1 ), -1 ) 
+    AS AGELINE
+    from employees
+    ) V;
+    
+    
+    
+    
+     ---------- ===== *** [퀴즈] 아래처럼 나오도록 하세요 *** ===== ----------
+   -- 방법은 아는데 구현을 못함!! 복습할 것.*******************************************************
+   select employee_id, first_name, job_id
+   from employees;
+   
+   --------------------------------------------------------------------------------------------------------------------------------------
+     직종ID          남자기본급여평균    여자기본급여평균     기본급여평균    (남자기본급여평균 - 기본급여평균)       (여자기본급여평균 - 기본급여평균) salary
+   --------------------------------------------------------------------------------------------------------------------------------------
+     ........           ....              ....             ....                   ...                                 ...     
+     FI_ACCOUNT         7900              7950             7920                   -20                                  30 
+     IT_PROG            5700              6000             5760                   -60                                 240 
+     ........           ....              ....             ....                   ...                                 ...   
+   --------------------------------------------------------------------------------------------------------------------------------------
+   select job_id AS 직종ID
+        , trunc( avg(V.MAN_SALARY) ) AS 남자기본급여평균
+        , trunc( avg(V.WOMAN_SALARY) ) AS 여자기본급여평균
+        , avg(salary) AS 기본급여평균
+        , trunc( avg(V.MAN_SALARY) ) - avg(salary) AS "남자평균차액"
+        , trunc( avg(V.WOMAN_SALARY) ) - avg(salary) AS "여자평균차액"   
+   from
+   (
+   select job_id
+        , salary
+        -- , case when substr(jubun, 7, 1) in ('1', '3') then '남' else '여' end AS GENDER
+        , case when substr(jubun, 7, 1) in ('1', '3') then salary end AS MAN_SALARY
+        -- 성별이 남인 항목들에 대해서만 salary 값을 남기고 그 외에는 null을 입력.
+        , case when substr(jubun, 7, 1) in ('2', '4') then salary end AS WOMAN_SALARY
+   from employees
+   ) V
+   group by job_id;
+   -- 성별이 남, 여인 사람들의 기본급만 표시 후 활용
+   
+   
+   --------------------------------------------------------------------------------------------
+   
+   ----- ===== **** Sub Query(서브쿼리) **** ===== -----
+   /*
+       -- Sub Query (서브쿼리)란?
+       select 문속에 또 다른 select 문이 포함되어져 있을 때 포함되어진 select 문을 Sub Query (서브쿼리)라고 부른다.
+       
+       
+       select ...
+       from .....  ==> Main Query(메인쿼리 == 외부쿼리)
+       where ... in (select ... 
+                     from .....) ==> Sub Query (서브쿼리 == 내부쿼리)
+   */
+   
+   
+   /*
+       employees 테이블에서
+       기본급여가 제일 많은 사원과 기본급여가 제일 적은 사원의 정보를
+       사원번호, 사원명, 기본급여로 나타내세요...
+   */
+   
+   
+   from employees
+   where salary = (employees 테이블에서 salary 의 최대값) or 
+                  (employees 테이블에서 salary 의 최소값);
+                  
+   (employees 테이블에서 salary 의 최대값) ==> select max(salary) from employees ==> 24000
+   (employees 테이블에서 salary 의 최대값) ==> select min(salary) from employees ==> 2100
+   
+   select employee_id AS 사원번호
+        , first_name || ' ' || last_name AS 사원명
+        , salary AS 기본급여
+   from employees
+   where salary = (select max(salary) from employees) or 
+         salary = (select min(salary) from employees);
+         
+    /*
+        100	Steven King	24000
+        132	TJ Olson	2100
+    */
+    
+    /*
+      [퀴즈]
+      employees 테이블에서 부서번호가 60, 80번 부서에 근무하는 사원들중에
+      월급이 50번 부서 직원들의 '평균월급' 보다 많은 사원들만 
+      부서번호, 사원번호, 사원명, 월급을 나타내세요....
+   */
+   
+   select department_id AS 부서번호
+        , employee_id AS 사원번호
+        , first_name || ' ' || last_name AS 사원명
+        , nvl(salary + (salary * commission_pct), salary) AS 월급
+   from employees
+   where department_id in('60', '80') and nvl(salary + (salary * commission_pct), salary) 
+         > ( select avg( nvl(salary + (salary * commission_pct), salary) ) 
+             from employees
+             where department_id = 50 )
+    order by 1, 4 desc;
+           
+    -- 한 번에 다하려고 하지 말고 하나 하나 완성시켜라. 다 아는 거니까 할 수 있다!!!!!!!!!!!!!
+    
+    ------------------------------------------------------------------------------------------------------
+    
+    create table tbl_authorbook
+   (bookname       varchar2(100)    -- 도서명
+   ,authorname     varchar2(20)     -- 작가명
+   ,loyalty        number(5)        -- 로열티
+   );
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('자바프로그래밍','이순신',1000);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('로빈슨크루소','한석규',800);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('로빈슨크루소','이순신',500);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('조선왕조실록','엄정화',2500);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('그리스로마신화','유관순',1200);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('그리스로마신화','이혜리',1300);
+   
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('그리스로마신화','서강준',1700);
+
+   insert into tbl_authorbook(bookname, authorname, loyalty)
+   values('어린왕자','김유신',1800);
+   
+   commit;
+   
+   
+   select * 
+   from tbl_authorbook;
+   
+   ---  tbl_authorbook 테이블에서 공저(도서명은 동일하지만 작가명이 다른 도서)로 지어진 도서정보를 나타내세요... ---
+   
+   /*
+       ---------------------------------
+         도서명         작가명    로얄티
+       ---------------------------------  
+         로빈슨크루소    한석규    800
+         로빈슨크루소    이순신    500
+         그리스로마신화  유관순   1200
+         그리스로마신화  이혜리   1300
+         그리스로마신화  서강준   1700
+       ---------------------------------  
+   */
+   
+   
+   
+   select bookname, count(*)
+   from tbl_authorbook
+   group by bookname
+   -- 공동저자는 책의 이름이 2번 이상 나오기 때문에 책의이름이 나온 횟수가 1보다 큰 책의이름을 파악한다.
+   /*
+        bookname  count(*)
+        로빈슨크루소	2
+        그리스로마신화	3
+        자바프로그래밍	1
+        조선왕조실록	1
+        어린왕자	1
+   */
+   
+   select bookname
+   from tbl_authorbook
+   group by bookname
+   having count(*) > 1;
+   
+   select *
+   from tbl_authorbook
+   where bookname in( select bookname
+                      from tbl_authorbook
+                      group by bookname
+                      having count(*) > 1);
+   
     
