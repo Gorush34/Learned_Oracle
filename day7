@@ -1,0 +1,787 @@
+ -- 면접질문 : INNER JOIN(내부조인) 과 OUTER JOIN(외부조인)의 차이점에 대해 말해보세요.
+    --> OUTER에는 LEFT, RIGHT, FULL JOIN이 있는데 NULL값을 표시해줄 수 있다.
+    -- 면접질문 : JOIN 과 UNION 의 차이점에 대해서 말해보세요.
+    
+    --- *** JOIN 을 사용한 응용문제 *** ---
+    
+    /*
+        아래와 같이 나오도록 하세요.
+        
+        -----------------------------------------------------------------------
+         부서번호   사원번호   사원명   기본급여   부서평균기본급여    부서평균과의차액
+        -----------------------------------------------------------------------
+        
+        
+        ---------------------------       --------------------------------------------
+          부서번호   부서평균기본급여          부서번호   사원번호   사원명    기본급여
+        ---------------------------       --------------------------------------------
+            10          3500                 10        1001     홍길동    3700
+            20          4000                 10        1002     이순신    2500
+            30          2800                 20        2001     엄정화    3500
+            ..          ....                 20        2002     유관순    4500
+            110         3200                 ..        ....     .....    .....
+         --------------------------       ---------------------------------------------
+                view1               join                view2
+    */
+    
+    -- 이 풀이는 부서번호가 null인 Kimberely Grant는 나오지 않는다.
+    SELECT V1.department_id AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON V1.department_id = V2.department_id -- v1과 v2의 부서번호가 같음을 알리는 조인조건절
+    order by 1, 4 desc;
+    -- view2
+    -- 00918. 00000 -  "column ambiguously defined" 뷰의 컬럼명이 같으면 반드시 출처를 표기해줘야 함
+    
+    
+    -- 틀린 풀이 -- 
+    SELECT V1.department_id AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    LEFT JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON V1.department_id = V2.department_id
+    order by 1, 4 desc;
+    -- LEFT JOIN시는 107행이 출력되지만 값은 V1의 값(부서번호, 부서평균기본급여)만 입력된다.
+    
+    
+    -- 틀린 풀이 -- 
+    SELECT V1.department_id AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    RIGHT JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON V1.department_id = V2.department_id
+    order by 1, 4 desc;
+    -- RIGHT JOIN시는 107행이 출력되지만 값은 V2의 값만 입력된다.
+    
+    
+    -- 틀린 풀이 -- 
+    SELECT V1.department_id AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    FULL JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON V1.department_id = V2.department_id
+    order by 1, 4 desc;
+    -- FULL JOIN시는 108행이 출력되고 V1, V2에서의 값이 각각 출력된다 
+    -- V1와 V2의 NULL값이 서로 같다고 취급되지 않기 때문이다.
+   
+   
+   -- 올바른 풀이 -- 
+    SELECT nvl(to_char(V1.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON nvl(V1.department_id, -9999) = nvl(V2.department_id, -9999)
+    order by 1, 4 desc;
+    -- null처리를 똑같은 수로 해두어 서로 같게끔 취급한다.
+    
+    
+    
+    /*
+    [퀴즈] 아래와 같이 나오도록 하세요.
+    
+    -----------------------------------------------------------------------------------------------------------
+         부서번호   사원번호   사원명   기본급여   부서평균기본급여    부서평균과의차액    부서내기본급여등수   전체기본급여등수
+    -----------------------------------------------------------------------------------------------------------
+        
+    */
+    
+    -- rank 활용
+    -- (V2.salary - V1.DEPT_AVG_SAL)
+    -- V2.salary
+    -- 내 풀이
+    SELECT nvl(to_char(V1.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+         , rank() over(partition by V1.department_id order by V2.salary desc) AS 부서내기본급여등수
+         , rank() over(order by V2.salary desc) AS 전체기본급여등수
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON nvl(V1.department_id, -9999) = nvl(V2.department_id, -9999)
+    order by 1, 4 desc;
+    
+    
+    --- 선생님 풀이
+    SELECT nvl(to_char(V1.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+         , V2.DEPT_RANK AS 부서내기본급여등수
+         , V2.TOTAL_RANK AS 전체기본급여등수
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+         , rank() over(partition by department_id order by salary desc) AS DEPT_RANK  
+         , rank() over(order by salary desc) AS TOTAL_RANK
+    from employees
+    ) V2
+    ON nvl(V1.department_id, -9999) = nvl(V2.department_id, -9999)
+    order by 1, 4 desc;
+    
+    /*
+    [퀴즈] 부서번호가 10, 30, 50 번 부서에 근무하는 사원들만 아래와 같이 나오도록 하세요.
+    
+    -----------------------------------------------------------------------------------------------------------
+         부서번호   사원번호   사원명   기본급여   부서평균기본급여    부서평균과의차액    부서내기본급여등수   전체기본급여등수
+    -----------------------------------------------------------------------------------------------------------
+        
+    */
+    
+    SELECT nvl(to_char(V1.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+         , rank() over(partition by V1.department_id order by V2.salary desc) AS 부서내기본급여등수
+         , rank() over(order by V2.salary desc) AS 전체기본급여등수
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    ) V2
+    ON nvl(V1.department_id, -9999) = nvl(V2.department_id, -9999)
+        where V2.department_id in ('10', '30', '50')
+    order by 1, 4 desc;
+    
+    --- *** 위의 풀이과정도 맞지만 아래처럼 하기를 권장한다. !!!!! *** ---
+    
+    SELECT nvl(to_char(V1.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+         , rank() over(partition by V1.department_id order by V2.salary desc) AS 부서내기본급여등수
+         , rank() over(order by V2.salary desc) AS 전체기본급여등수
+    FROM
+    (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    where department_id in ('10', '30', '50')
+    group by department_id
+    ) V1
+    -- view1
+    JOIN
+    (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    where department_id in ('10', '30', '50')
+    ) V2
+    ON nvl(V1.department_id, -9999) = nvl(V2.department_id, -9999)
+    order by 1, 4 desc;
+    -- VIEW 안에서 부서번호를 찾는 것이 JOIN 이후에 찾는것보다 효율적이다.
+    -- JOIN 이후에 찾으면 쓸데없는 메모리 소비가 있음.
+    
+    ---- 또는
+    ---- ===== *** WITH 절을 사용한 inline view 를 통해 JOIN 하기 *** ===== ----
+    
+    WITH 
+    V1 AS (
+    select department_id
+         , trunc(avg(salary)) AS DEPT_AVG_SAL
+    from employees
+    where department_id in ('10', '30', '50')
+    group by department_id
+    ),
+    V2 AS (
+    select department_id
+         , employee_id
+         , first_name || ' ' || last_name AS FULLNAME
+         , salary
+    from employees
+    where department_id in ('10', '30', '50')
+    )
+    SELECT nvl(to_char(V2.department_id), '인턴') AS 부서번호
+         , V2.employee_id AS 사원번호
+         , V2.FULLNAME AS 사원명   
+         , V2.salary AS 기본급여
+         , V1.DEPT_AVG_SAL AS 부서평균기본급여
+         , (V2.salary - V1.DEPT_AVG_SAL) AS 부서평균과의차액
+         , rank() over(partition by V1.department_id order by V2.salary desc) AS 부서내기본급여등수
+         , rank() over(order by V2.salary desc) AS 전체기본급여등수
+    FROM V1 JOIN V2
+    ON V1.department_id = V2.department_id
+    order by 1,4;
+    
+    
+    
+    
+    ---------- ======= **** NON-EQUI JOIN  **** ======= ---------- 
+    /*
+         조인조건절에 사용되는 컬럼의 값이 특정한 범위에 속할 때 사용하는 것이 NON-EQUI JOIN 이다.
+         NON-EQUI JOIN 에서는 조인조건절에 = 을 사용하는 것이 아니라 between A and B 를 사용한다.
+    */
+    
+    -- 소득세율 지표 관련 테이블을 생성한다. 
+  create table tbl_taxindex
+  (lowerincome   number       -- 연봉의 최저
+  ,highincome    number       -- 연봉의 최대
+  ,taxpercent    number(2,2)  -- 세율  -0.99 ~ 0.99 
+  );
+  -- Table TBL_TAXINDEX이(가) 생성되었습니다.
+   
+  insert into tbl_taxindex(lowerincome,highincome,taxpercent)
+  values(1, 99999, 0.02);
+
+  insert into tbl_taxindex(lowerincome,highincome,taxpercent)
+  values(100000, 149999, 0.05);
+
+  insert into tbl_taxindex(lowerincome,highincome,taxpercent)
+  values(150000, 199999, 0.08);
+
+  insert into tbl_taxindex(lowerincome,highincome,taxpercent)
+  values(200000, 10000000000000000, 0.1);
+
+  commit;
+  
+  select * 
+  from tbl_taxindex;
+  
+  ------------------------------------------------------
+   사원번호     사원명     연봉     세율      소득세액
+  ------------------------------------------------------
+    1001       홍길동    50000    0.02      50000 *  0.02
+    1002       엄정화   170000    0.08     170000 *  0.08
+    ....       ......  ......    .....     .............
+    
+    
+    --- SQL 1992 CODE ---
+    /*
+        사원번호     사원명     연봉     세율
+        -------------------------    ====
+            employees 테이블           tbl_taxindex 테이블
+    */
+    
+    select employee_id AS 사원번호
+         , first_name || ' ' || last_name AS 사원명
+         , nvl(salary + (salary * commission_pct), salary)*12 AS 연봉
+         , taxpercent AS 세율
+         , nvl(salary + (salary * commission_pct), salary)*12 * taxpercent AS 소득세액
+    from employees E, tbl_taxindex T -- SQL 1992 CODE
+--    where nvl(E.salary + (E.salary * E.commission_pct), E.salary)*12 between T.LOWERINCOME and T.HIGHINCOME  -- 조인조건절
+    where nvl(salary + (salary * commission_pct), salary)*12 between LOWERINCOME and HIGHINCOME ;
+    -- 각 테이블마다 중복된 것이 아니기 때문에 E. T. 빼도 됨.
+    
+    --- SQL 1999 CODE ---
+    select employee_id AS 사원번호
+         , first_name || ' ' || last_name AS 사원명
+         , nvl(salary + (salary * commission_pct), salary)*12 AS 연봉
+         , taxpercent AS 세율
+         , nvl(salary + (salary * commission_pct), salary)*12 * taxpercent AS 소득세액
+    from employees E JOIN tbl_taxindex T -- SQL 1999 CODE
+--    where nvl(E.salary + (E.salary * E.commission_pct), E.salary)*12 between T.LOWERINCOME and T.HIGHINCOME  -- 조인조건절
+    ON nvl(salary + (salary * commission_pct), salary)*12 between LOWERINCOME and HIGHINCOME ;
+    -- 각 테이블마다 중복된 것이 아니기 때문에 E. T. 빼도 됨.
+    
+    
+    
+    ------------------ ===== **** SELF JOIN(자기조인) **** ===== ------------------ 
+   /*
+       자기자신의 테이블(뷰)을 자기자신의 테이블(뷰)과 JOIN 시키는 것을 말한다.
+       이때 반드시 테이블(뷰)에 대한 alias(별칭)를 달리 주어서 실행해야 한다.
+   */
+   
+   --- 아래처럼 나오도록 하세요... ---
+   -------------------------------------------------------------------------------------------------------
+    사원번호              사원명             이메일     급여      직속상관번호             직속상관명
+  employee_id   first_name || last_name    email     salary   employee_id      first_name || last_name
+  -------------------------------------------------------------------------------------------------------
+     100             Steven King           SKING     24000     null                 null 
+     102             Lex De Haan           LDEHAAN   17000     100                  Steven King
+     103             Alexander   Hunold    AHUNOLD   9000      102                  Lex De Haan
+     104             Bruce Ernst           BERNST    6000      103                  Alexander Hunold
+    
+    select *
+    from employees
+    order by employee_id asc;
+    
+    
+    --- SQL 1992 CODE ---
+    select E1.employee_id AS 사원번호, E1.first_name || ' ' || E1.last_name AS 사원명, E1.email AS 이메일, E1.salary AS 급여
+         , E2.employee_id AS 직속상관번호, E2.first_name || ' ' || E2.last_name AS직속상관명
+    from employees E1, employees E2
+    where E1.manager_id = E2.employee_id(+)
+    order by E1.employee_id;
+    -- E1의 직속상관 ID는 E2의 사원ID이다.
+    -- E1쪽이 다나와야하기 때문에 (+)를 E2에 넣음
+    -- SELF JOIN은 컬럼명이 같기때문에 반드시 출처(E1. / E2.)를 적어줘야 함
+    
+    
+    --- SQL 1999 CODE ---
+    select E1.employee_id AS 사원번호, E1.first_name || ' ' || E1.last_name AS 사원명, E1.email AS 이메일, E1.salary AS 급여
+         , E2.employee_id AS 직속상관번호, E2.first_name || ' ' || E2.last_name AS직속상관명
+    from employees E1 LEFT JOIN employees E2
+    on E1.manager_id = E2.employee_id
+    order by E1.employee_id;
+    -- E1쪽이 다나와야하기 때문에 LEFT JOIN 사용.
+    
+    
+    select * 
+   from tbl_authorbook;
+   
+   ---  SELF JOIN을 이용하여 tbl_authorbook 테이블에서 공저(도서명은 동일하지만 작가명이 다른 도서)로 지어진 도서정보를 나타내세요... ---
+   
+   /*
+       ---------------------------------
+         도서명         작가명    로얄티
+       ---------------------------------  
+         로빈슨크루소    한석규    800
+         로빈슨크루소    이순신    500
+         그리스로마신화  유관순   1200
+         그리스로마신화  이혜리   1300
+         그리스로마신화  서강준   1700
+       ---------------------------------  
+   */
+   
+   
+   --- SQL 1992 CODE ---
+   -- select 되어진 행의 결과물에서 중복된 행이 여러 번이 아닌 1번만 나오게 하려면
+   -- select 바로 다음에 distinct 를 사용하면 된다.
+   select A1.BOOKNAME AS 도서명
+        , A1.AUTHORNAME AS 작가명
+        , A1.LOYALTY AS 로얄티
+   from tbl_authorbook A1 , tbl_authorbook A2
+   where (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME); -- 조인조건절
+   
+   select distinct A1.*
+   from tbl_authorbook A1 , tbl_authorbook A2
+   where (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME)
+   order by 1, 3 desc;
+   
+   /*   !!!! select 문에서 distinct 와 order by 절을 함께 사용할때는 조심해야 한다. !!!!
+        select 문에 distict 가 있는 경우 order by 절에는 select 문에서 사용된 컬럼만 들어올 수 있다.
+        또는 select 문에 distict 가 있는 경우 order by 절을 사용하지 않아야 한다.
+   */
+   
+   select distinct A1.BOOKNAME AS 도서명
+        , A1.AUTHORNAME AS 작가명
+        , A1.LOYALTY AS 로얄티
+   from tbl_authorbook A1 , tbl_authorbook A2
+   where (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME)
+   order by A1.BOOKNAME, A1.LOYALTY desc;
+   
+   select distinct A1.BOOKNAME AS 도서명
+        , A1.AUTHORNAME AS 작가명
+   from tbl_authorbook A1 , tbl_authorbook A2
+   where (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME)
+   order by A1.BOOKNAME, A1.LOYALTY desc;
+   -- ORA-01791: not a SELECTed expression
+   -- distinct를 사용했으나 select 문에 사용되지 않은 컬럼을 넣어서 오류 발생
+   -- Java에서 쓰려면 여기서는 넣어주되 Java에서 쓰면 됨!
+   
+   
+   select distinct A1.BOOKNAME AS 도서명
+        , A1.AUTHORNAME AS 작가명
+   from tbl_authorbook A1 , tbl_authorbook A2
+   where (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME)
+   order by A1.BOOKNAME, A1.AUTHORNAME desc;
+   
+   select distinct A1.BOOKNAME AS 도서명
+        , A1.AUTHORNAME AS 작가명
+   from tbl_authorbook A1 JOIN tbl_authorbook A2
+   ON (A1.BOOKNAME = A2.BOOKNAME) and (A1.AUTHORNAME != A2.AUTHORNAME)
+   order by A1.BOOKNAME, A1.AUTHORNAME desc;
+   
+   
+   ----- ==== **** Multi Table JOIN(다중 테이블 조인) **** ==== -----
+   
+   --> 3개 이상의 테이블(뷰)을 가지고 조인 시켜주는 것이다.
+   
+   /*
+       
+      -------------------------------------------------------------------------------------------------------------------------
+         대륙명        국가명                       부서주소                    부서번호   부서명      사원번호  사원명       기본급여
+      --------------------------------------------------------------------------------------------------------------------------   
+         Americas     United States of America     Seattle 2004 Charade Rd      90      Executive   100    Steven King   24000
+   
+   
+         대륙명   ==>  regions.region_name                                    regions.region_id 
+         국가명   ==>  countries.country_name                                 countries.region_id       countries.country_id
+         부서주소  ==> locations.city || ' ' || locations.street_address      locations.country_id      locations.location_id
+         부서명   ==> departments.department_name                             departments.location_id   departments.department_id 
+         사원명   ==> employees.first_name || ' ' || employees.last_name      employees.department_id
+   */
+   
+   select * from tab;
+   
+   select *
+   from REGIONS;
+   
+   select *
+   from COUNTRIES;
+   
+   select *
+   from LOCATIONS;
+   
+   select *
+   from DEPARTMENTS;
+   
+   select *
+   from EMPLOYEES;
+   
+   
+   select *
+   from REGIONS R
+   JOIN COUNTRIES C
+   ON R.region_id = C.region_id
+   JOIN LOCATIONS L
+   ON C.country_id = L.country_id
+   JOIN DEPARTMENTS D
+   ON L.location_id = D.location_id
+   JOIN EMPLOYEES E
+   ON D.department_id = E.department_id
+   order by 1;
+   
+   select R.region_name AS 대륙명
+        , C.country_name AS 국가명
+        , L.city || ' ' || L.street_address AS 부서주소
+        , E.department_id AS 부서번호
+        , D.department_name AS 부서명
+        , E.employee_id AS 사원번호
+        , E.first_name || ' ' || E.last_name AS 사원명
+        , E.salary AS 기본급여
+   from REGIONS R
+   JOIN COUNTRIES C
+   ON R.region_id = C.region_id
+   JOIN LOCATIONS L
+   ON C.country_id = L.country_id
+   JOIN DEPARTMENTS D
+   ON L.location_id = D.location_id
+   JOIN EMPLOYEES E
+   ON D.department_id = E.department_id
+   order by 1;
+   
+   
+   -------------------------------------------------------------------------------------------------------------------------
+         대륙명        국가명                       부서주소                    부서번호   부서명      사원번호  사원명       기본급여
+   --------------------------------------------------------------------------------------------------------------------------   
+      Americas     United States of America     Seattle 2004 Charade Rd      90      Executive   100    Steven King   24000
+      
+   -- 부서번호 30, 90만
+   select R.region_name AS 대륙명
+        , C.country_name AS 국가명
+        , L.city || ' ' || L.street_address AS 부서주소
+        , E.department_id AS 부서번호
+        , D.department_name AS 부서명
+        , E.employee_id AS 사원번호
+        , E.first_name || ' ' || E.last_name AS 사원명
+        , E.salary AS 기본급여
+   from REGIONS R
+   JOIN COUNTRIES C
+   ON R.region_id = C.region_id
+   JOIN LOCATIONS L
+   ON C.country_id = L.country_id
+   JOIN DEPARTMENTS D
+   ON L.location_id = D.location_id
+   JOIN EMPLOYEES E
+   ON D.department_id = E.department_id
+   where E.department_id IN(30, 90)
+   order by 1;
+   
+   --또는
+   
+   select R.region_name AS 대륙명
+        , C.country_name AS 국가명
+        , L.city || ' ' || L.street_address AS 부서주소
+        , E.department_id AS 부서번호
+        , D.department_name AS 부서명
+        , E.employee_id AS 사원번호
+        , E.first_name || ' ' || E.last_name AS 사원명
+        , E.salary AS 기본급여
+   from REGIONS R
+   JOIN COUNTRIES C
+   ON R.region_id = C.region_id
+   JOIN LOCATIONS L
+   ON C.country_id = L.country_id
+   JOIN DEPARTMENTS D
+   ON L.location_id = D.location_id
+   JOIN ( SELECT *
+          FROM EMPLOYEES
+          where department_id IN(30, 90) ) E
+   ON D.department_id = E.department_id
+   order by 1;
+   
+   -- 전체에서 분류보단 미리 분류된 데이터를 뽑아가자.
+   
+   
+   --- [대분류 검색]
+   --- *** 'Americas' 대륙에 근무하는 사원들만 
+   --      국가명     부서주소     부서번호   부서명    사원번호  사원명   기본급여 를 나타내세요.
+   WITH
+   V AS
+   (
+       SELECT R.region_id, region_name,
+              C.country_id, country_name,
+              L.location_id, street_address, postal_code, city, state_province,
+              D.department_id, department_name, D.manager_id, 
+              employee_id, first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, E.manager_id AS SASUNO, jubun 
+       from REGIONS R
+       JOIN COUNTRIES C
+       ON R.region_id = C.region_id
+       JOIN LOCATIONS L
+       ON C.country_id = L.country_id
+       JOIN DEPARTMENTS D
+       ON L.location_id = D.location_id
+       JOIN EMPLOYEES E
+       ON D.department_id = E.department_id
+   )
+   select country_name AS 국가명
+        , city || ' ' || street_address AS 부서주소
+        , department_id AS 부서번호
+        , department_name AS 부서명
+        , employee_id AS 사원번호
+        , first_name || ' ' || last_name AS 사원명
+        , salary AS 기본급여
+   from V
+   where region_name = 'Americas';
+   
+   
+   --- [중분류 검색] 
+   --- *** 'Seattle' 도시에 근무하는 사원들만 
+   --      부서주소     부서번호   부서명    사원번호  사원명   기본급여 를 나타내세요.
+   WITH
+   V AS
+   (
+       SELECT R.region_id, region_name,
+              C.country_id, country_name,
+              L.location_id, street_address, postal_code, city, state_province,
+              D.department_id, department_name, D.manager_id, 
+              employee_id, first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, E.manager_id AS SASUNO, jubun 
+       from REGIONS R
+       JOIN COUNTRIES C
+       ON R.region_id = C.region_id
+       JOIN LOCATIONS L
+       ON C.country_id = L.country_id
+       JOIN DEPARTMENTS D
+       ON L.location_id = D.location_id
+       JOIN EMPLOYEES E
+       ON D.department_id = E.department_id
+   )
+   select city || ' ' || street_address AS 부서주소
+        , department_id AS 부서번호
+        , department_name AS 부서명
+        , employee_id AS 사원번호
+        , first_name || ' ' || last_name AS 사원명
+        , salary AS 기본급여
+   from V
+   where region_name = 'Americas'
+         AND city = 'Seattle';
+   
+   
+   --- [소분류 검색]
+   --- *** 'Finance' 부서명에 근무하는 사원들만 
+   --      부서번호   부서명    사원번호  사원명   기본급여 를 나타내세요.
+   
+   
+   WITH
+   V AS
+   (
+       SELECT R.region_id, region_name,
+              C.country_id, country_name,
+              L.location_id, street_address, postal_code, city, state_province,
+              D.department_id, department_name, D.manager_id, 
+              employee_id, first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, E.manager_id AS SASUNO, jubun 
+       from REGIONS R
+       JOIN COUNTRIES C
+       ON R.region_id = C.region_id
+       JOIN LOCATIONS L
+       ON C.country_id = L.country_id
+       JOIN DEPARTMENTS D
+       ON L.location_id = D.location_id
+       JOIN EMPLOYEES E
+       ON D.department_id = E.department_id
+   )
+   select city || ' ' || street_address AS 부서주소
+        , department_id AS 부서번호
+        , department_name AS 부서명
+        , employee_id AS 사원번호
+        , first_name || ' ' || last_name AS 사원명
+        , salary AS 기본급여
+   from V
+   where region_name = 'Americas'
+         AND city = 'Seattle'
+         AND department_name = 'Finance';
+         
+         
+   --- [퀴즈] 아래와 같이 나오도록 하세요..
+   /*
+       -------------------------------------------------------------------------------------------------
+        부서번호           부서명                부서장성명                     사원번호   사원명   입사일 
+       ------------------------------------------------------------------------------------------------- 
+       D.department_id    D.department_name    E.first_name || E.last_name
+       E.department_id 
+       
+                   D.manager_id                E.employee_id
+                 (부서장의 사원번호)              (사원번호)
+   */
+   -- 사원번호 / 사원명 / 입사일 붙이기위해 WITH 사용
+   WITH 
+   V1 AS
+   (
+   select D.department_id 
+        , department_name 
+        , D.manager_id 
+        , employee_id
+        , first_name || ' ' || last_name AS MANAGER_NAME
+   from departments D
+   join employees E
+   ON D.manager_id = E.employee_id
+   )
+   ,
+   V2 AS
+   (
+   select employee_id 
+        , first_name || ' ' || last_name AS ENAME
+        , hire_date
+        , department_id
+   from employees
+   )
+   select V1.department_id AS 부서번호          
+        , V1.department_name AS 부서명              
+        , V1.MANAGER_NAME AS 부서장성명                   
+        , V2.employee_id AS 사원번호 
+        , V2.ENAME AS 사원명 
+        , to_char(V2.hire_date, 'yyyy-mm-dd') AS 입사일 
+   from V1 RIGHT JOIN V2
+   ON V1.department_id = V2.department_id
+   order by 1;
+   
+   -- 부서장의 ID를 통해 E 테이블에서 필요한 정보 표시
+   -- V2. department_id 붙이는 이유 : V1과 붙이기 위해 V2에도 부서번호를 넣어야 함
+   -- RIGHT JOIN 을 하면 employee 테이블의 값은 모두 표시되기 때문에 부서번호가 null인 grant 씨도 나오게 된다.
