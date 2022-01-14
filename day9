@@ -192,3 +192,245 @@
     ==> DDL : create, drop, alter, truncate 
     --> 여기서 중요한 것은 DDL 문을 실행을 하면 자동적으로 commit; 이 되어진다.
     --  즉, auto commit 되어진다.
+    
+    select *
+    from employees
+    where employee_id = 100;
+    -- salary ==> 24000
+    -- email ==> SKING
+    
+    update employees set salary = 50000, email = 'gogogogogo'
+    where employee_id = 100;
+    -- 1 행 이(가) 업데이트되었습니다.
+    
+    create table tbl_imsi
+    (no     number
+    ,name   varchar2(20)
+    );
+    -- Table TBL_IMSI이(가) 생성되었습니다.
+    
+    -- DDL 문을 실행했으므로 자동적응로 commit; 이 되어진다.
+    
+    select *
+    from employees
+    where employee_id = 100;
+    
+    rollback;
+    -- 롤백 완료.
+    
+    select *
+    from employees
+    where employee_id = 100;
+    -- 위에서 DDL문(create)을 실행했으므로 자동적으로 commit; 이 되었기 때문에
+    -- rollback이 안 됨.
+    
+    update employees set salary = 24000
+                       , email = 'SKING'
+                       , first_name = 'Steven'
+                       , last_name = 'King'
+    where employee_id = 100;
+    -- 1 행 이(가) 업데이트되었습니다.
+    
+    commit;
+    
+    select *
+    from employees
+    where employee_id = 100;
+    -- DDL 문 실행 후 ROLLBACK 해봐야 소용없으니 조심해라!!!
+    
+    ------ ====== **** TRUNCATE table 테이블명; **** ====== ------  
+    --> TRUNCATE table 테이블명; 을 실행하면 테이블명 에 존재하던 모든 행(row)들을 삭제해주고,
+    --  테이블명에 해당하는 테이블은 완전초기화 가 되어진다.
+    --  중요한 사실은 TRUNCATE table 테이블명; 은 DDL 문이기에 auto commit; 되어지므로 rollback 이 불가하다.
+   
+    --  delete from 테이블명; 을 실행하면 이것도 테이블명 에 존재하던 모든 행(row)들을 삭제해준다.
+    --  이것은 DML문 이므로 rollback 이 가능하다.
+    
+    create table tbl_emp_copy_1
+    as
+    select * from employees;
+    -- Table TBL_EMP_COPY_1이(가) 생성되었습니다.
+    
+    select *
+    from tbl_emp_copy_1;
+    
+    delete from tbl_emp_copy_1;
+    -- 107개 행 이(가) 삭제되었습니다.
+    
+    select count(*)
+    from tbl_emp_copy_1;
+    
+    rollback;
+    -- 롤백 완료.
+    
+    select count(*)
+    from tbl_emp_copy_1; -- 107
+    
+    truncate table tbl_emp_copy_1;
+    -- Table TBL_EMP_COPY_1이(가) 잘렸습니다.
+    
+    select *
+    from tbl_emp_copy_1;
+    
+    select count(*)
+    from tbl_emp_copy_1;
+    
+    rollback; -- auto commit; 이 되어졌으므로 rollback 해봐야 소용 없다.
+    -- 롤백 완료.
+    
+    
+    
+    
+    
+    -------- **** 데이터 제어어(DCL == Data Control Language) **** ---------
+    /*
+    ==> DCL : grant(권한 부여하기), revoke(권한 회수하기)
+    --> 여기서 중요한 것은 DCL 문을 실행하면 auto commit; 이 되어진다.
+    grant 권한 to 대상
+    revoke 권한 from 대상
+    */
+    
+    
+    ---- *** SYS 또는 SYSTEM 에서 아래와 같은 작업을 한다. 시작 *** ----
+    show user;
+    -- USER이(가) "SYS"입니다. (우측 상단 local_sys로 변경 후)
+    
+    -- orauser1 이라는 오라클 일반사용자 계정을 생성하는데, 암호는 cclass 이다.
+    create user orauser1 identified by cclass default tablespace users;
+    -- User ORAUSER1이(가) 생성되었습니다.
+    
+    -- 생성되어진 오라클 일반사용자 계정인 orauser1 에게 오라클서버에 접속이 되어지고,
+    -- 접속이 되어진 이후 테이블 등을 생성할 수 있는 권한을 부여해주겠다.
+    grant connect, resource, unlimited tablespace to orauser1;
+    -- Grant을(를) 성공했습니다.
+    -- 이 명령어 이후 cmd에서 로그인(conn orauser1/cclass) 하면 로그인 성공됨.
+    
+    ---- *** SYS 또는 SYSTEM 에서 아래와 같은 작업을 한다. 종료 *** ----
+
+    
+    ---- *** HR에서 아래와 같은 작업을 한다. *** ----
+    -- 우측 상단 local_hr 로 변경
+    show user;
+    -- USER이(가) "HR"입니다.
+    
+    select *
+    from HR.employees; -- HR스키마
+    
+    select *
+    from employees; 
+    -- 현재 오라클 서버에 접속된 사용자(우측상단)가 HR 이므로 HR.employees 대신에 employees 을 쓰면 HR.employees로 인식함.
+    
+    select *
+    from HR.employees;
+    -- SYS는 관리자이기 때문에 위처럼 하면 볼 수 있다.
+    
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 select 할 수 있도록 권한을 부여하겠습니다.
+    grant select on employees to orauser1;
+    -- Grant을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 update 할 수 있도록 권한을 부여하겠습니다.
+    grant update on employees to orauser1;
+    -- Grant을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 delete 할 수 있도록 권한을 부여하겠습니다.
+    grant delete on employees to orauser1;
+    -- Grant을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 delete 할 수 있도록 부여한 권한을 회수하겠습니다.
+    revoke delete on employees from orauser1;
+    -- Revoke을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 update 할 수 있도록 부여한 권한을 회수하겠습니다.
+    -- update는 select 권한이 있어야 할 수 있음(순서상으로 그래야 하니까)
+    revoke update on employees from orauser1;
+    -- Revoke을(를) 성공했습니다.
+
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 select 할 수 있도록 부여한 권한을 회수하겠습니다.
+    revoke select on employees from orauser1;
+    -- Revoke을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 select, update, delete 할 수 있도록 권한을 부여하겠습니다.
+    grant select, update, delete on employees to orauser1;
+    -- Grant을(를) 성공했습니다.
+    
+    -- orauser1 에게 HR이 자신의 소유인 employees 테이블에 대해 select, update, delete 할 수 있도록 부여한 권한을 회수하겠습니다.
+    revoke select, update, delete on employees from orauser1;
+    -- Revoke을(를) 성공했습니다.
+    
+    select *
+    from employees;
+    
+    /*
+        == Stored View 를 생성하는 이유 2가지 ==
+        1. 복잡한 SQL문을 간단히 만들어서 추후에 재사용이 쉽게 하기 위함.
+        2. 민감한 정보가 들어있는 텡이블에 있어서 공개할 행과 공개할 컬럼만 따로 만들어 
+           Oracle 사용자에게 권한을 부여하기 위함.
+    */
+    
+    create or replace view view_emp_3080
+    as
+    select employee_id, first_name, last_name, hire_date, salary, commission_pct
+         , department_id, substr(jubun,1,6) AS BIRTHDAY
+    from employees
+    where department_id in (30, 50, 80);
+    -- View VIEW_EMP_3080이(가) 생성되었습니다.
+    
+    grant select, update, delete on view_emp_3080 to orauser1;
+    -- 테이블 전체에 대한 권한을 주는게 아니라 뷰를 하나 만들어서 뷰에 대한 권한을 준다(보안을 위해서)
+    -- Grant을(를) 성공했습니다.
+    
+    
+
+    
+    ---- *** SYS 또는 SYSTEM 에서 아래와 같은 작업을 한다. 시작 *** ----
+    
+    show user;
+    -- USER이(가) "SYS"입니다.
+    
+    grant create synonym to orauser1;
+    -- Grant을(를) 성공했습니다.
+
+    ---- *** SYS 또는 SYSTEM 에서 아래와 같은 작업을 한다. 종료 *** ----
+    
+    ---- *** Orauser1 에서 아래와 같은 작업을 한다. 시작 *** ----
+
+    show user;
+    
+    select *
+    from HR.view_emp_3080;
+    
+    --- ==== *** 시노님(Synonym, 동의어) *** ==== ---
+    create or replace synonym emp for HR.view_emp_3080;
+    -- ORA-01031: insufficient privileges => 권한 없음.
+    
+    -- SYS에서 synonym 권한 준 이후
+    
+    create or replace synonym emp for HR.view_emp_3080;
+    -- Synonym EMP이(가) 생성되었습니다.
+    
+    select *
+    from HR.view_emp_3080;
+    
+    select *
+    from emp;
+    
+    --- *** 생성되어진 synonym 을 조회해본다. *** ---
+    
+    select *
+    from user_synonyms;
+    
+    /*
+        --------------------------------------------------------------
+          SYNONYM_NAME    TABLE_OWNER     TABLE_NAME      DB_LINK
+        --------------------------------------------------------------
+             EMP	            HR	      VIEW_EMP_3080     NULL	
+    
+    */
+    
+    ---- *** Orauser1 에서 아래와 같은 작업을 한다. 종료 *** ----
+    
+    
+    ---- *** HR 에서 아래와 같은 작업을 한다. 시작 *** ----
+    show user;
+    -- USER이(가) "HR"입니다.
