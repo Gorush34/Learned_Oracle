@@ -1,0 +1,194 @@
+-------- ====== ****   merge(병합)   **** ====== --------
+   -- 어떤 2개 이상의 테이블에 존재하는 데이터를 다른 테이블 한곳으로 모으는것(병합)이다.
+   
+   1. 탐색기에서 C:\oraclexe\app\oracle\product\11.2.0\server\network\ADMIN 에 간다.
+   
+   2. tnsnames.ora 파일을 메모장으로 연다.
+   
+   3. TEACHER =
+      (DESCRIPTION =
+        (ADDRESS = (PROTOCOL = TCP)(HOST = 211.238.142.72)(PORT = 1521))
+        (CONNECT_DATA =
+          (SERVER = DEDICATED)
+          (SERVICE_NAME = XE)
+        )
+      )
+     을 추가한다.
+     HOST = 211.238.142.72 이 연결하고자 하는 원격지 오라클서버의 IP 주소이다.
+     그런데 전제조건은 원격지 오라클서버(211.238.142.72)의 방화벽에서 포트번호 1521 을 허용으로 만들어주어야 한다.
+     
+     그리고 TEACHER 를 'Net Service Name 네트서비스네임(넷서비스명)' 이라고 부른다.
+     
+     
+   4. 명령프롬프트를 열어서 원격지 오라클서버(211.238.142.72)에 연결이 가능한지 테스트를 한다. 
+      C:\Users\sist>tnsping TEACHER 5
+
+        Used TNSNAMES adapter to resolve the alias
+        Attempting to contact (DESCRIPTION = (ADDRESS = (PROTOCOL = TCP)(HOST = 211.238.142.72)(PORT = 1521)) (CONNECT_DATA = (SERVER = DEDICATED) (SERVICE_NAME = XE)))
+        OK (0 msec)
+        OK (40 msec)
+        OK (10 msec)
+        OK (30 msec)
+        OK (20 msec)
+        
+        
+    5.  데이터베이스 링크(database link) 만들기
+    
+    create database link teacherServer
+    connect to hr identified by cclass   -- 이때 hr 과 암호 cclass 는 연결하고자 하는 원격지 오라클서버(211.238.142.72)의 계정명과 암호 이다. 
+    using 'TEACHER';  -- TEACHER 는 Net Service Name 네트서비스네임(넷서비스명) 이다.
+    -- Database link TEACHERSERVER이(가) 생성되었습니다.    
+    
+    
+    update employees set first_name = '환모', last_name = '정'
+    where employee_id = 100; --- Steven King
+    -- 1 행 이(가) 업데이트되었습니다.
+    
+    commit;
+    -- 커밋 완료.
+    
+    select * 
+    from employees -- 로컬서버
+    order by employee_id;
+    
+    select * 
+    from employees@XE -- 원래는 이렇게 쓰는게 원칙 / 로컬서버
+    order by employee_id;
+    
+    select * 
+    from employees@teacherServer -- 원격지 오라클서버(211.238.142.72)  / 테이블명@DB링크
+    order by employee_id;
+    
+    --- **** 생성되어진 데이터베이스 링크를 조회해봅니다. **** ---
+    
+    select *
+    from user_db_links;
+    /*
+        ---------------------------------------------------------
+        DB_LINK         USERNAME    PASSWORD     HOST    CREATED
+        ----------------------------------------------------------
+        TEACHERSERVER	    HR		 NULL      TEACHER	 22/01/14
+                                            -- TEACHER 는 Net Service Name이다.
+    */
+    
+    --- **** 생성되어진 데이터베이스 링크를 삭제해봅니다. **** ---
+    drop database link BONJUM;
+    -- Database link BONJUM(가) 삭제되었습니다.
+    
+    create database link bonjumlink
+    connect to hr identified by cclass   -- 이때 hr 과 암호 cclass 는 연결하고자 하는 원격지 오라클서버(211.238.142.72)의 계정명과 암호 이다. 
+    using 'TEACHER';
+    -- Database link BONJUMLINK이(가) 생성되었습니다.
+    
+    -- 각 지점은 tbl_reservation_jeonghwanmo 이라는 테이블을 생성한다.
+    drop table tbl_reservation_jeonghwanmo purge;
+    -- Table TBL_RESERVATION_JEONGHWANMO이(가) 삭제되었습니다.
+        
+        
+    create table tbl_reservation_jeonghwanmo
+    (rsvno       varchar2(20)    -- 예약고유번호
+    ,memberid    varchar2(20)    -- 회원ID
+    ,ticketcnt   number          -- 티켓개수
+    ,constraint PK_tbl_reservation_jeonghwanmo primary key(rsvno) -- 이 컬럼에는 고유한 값만 들어온다라는 뜻
+    );
+    -- Table TBL_RESERVATION_JEONGHWANMO이(가) 생성되었습니다.
+    
+    insert into tbl_reservation_jeonghwanmo(rsvno, memberid, ticketcnt)
+    values('jeonghwanmo001', '정환모', 2);
+    
+    commit;
+    
+    
+    -- 아래는 본점DB서버(샘PC)에서만 하는 것이다.
+    create table tbl_reservation_merge
+    (rsvno       varchar2(20)    -- 예약고유번호
+    ,memberid    varchar2(20)    -- 회원ID
+    ,ticketcnt   number          -- 티켓개수
+    ,constraint PK_tbl_reservation_merge primary key(rsvno)
+    );
+    -- Table TBL_RESERVATION_MERGE이(가) 생성되었습니다.
+    
+    select *
+    from tbl_reservation_merge; -- 샘이 하는것
+    
+    select *
+    from tbl_reservation_merge@bonjumlink; -- 여러분들이 하는 것
+    
+    select * 
+    from tbl_reservation_jeonghwanmo;
+    
+    -- 아래는 우리가(지사) 하는 것.
+    
+    merge into tbl_reservation_merge@bonjumlink R
+    using tbl_reservation_jeonghwanmo L
+    on (L.rsvno = R.rsvno)
+    when matched then
+        update set R.memberid = L.memberid
+                 , R.ticketcnt = L.ticketcnt
+    when not matched then
+        insert (rsvno, memberid, ticketcnt) values(L.rsvno, L.memberid, L.ticketcnt);
+        
+    -- 1 행 이(가) 병합되었습니다.
+    
+    commit;
+    -- 커밋 완료.
+    
+    -- rollback;
+    
+    select *
+    from tbl_reservation_merge@bonjumlink; -- 여러분들이 하는 것
+    
+    select * 
+    from tbl_reservation_jeonghwanmo;
+    
+    --------------------------------------------------------------------------------
+    
+    update tbl_reservation_jeonghwanmo set memberid = 'Jeong H.M', ticketcnt = 9
+    where rsvno = 'jeonghwanmo001';
+    -- 1 행 이(가) 업데이트되었습니다.
+
+    commit;
+    -- 커밋 완료.
+    
+    merge into tbl_reservation_merge@bonjumlink R
+    using tbl_reservation_jeonghwanmo L
+    on (L.rsvno = R.rsvno)
+    when matched then
+        update set R.memberid = L.memberid
+                 , R.ticketcnt = L.ticketcnt
+    when not matched then
+        insert (rsvno, memberid, ticketcnt) values(L.rsvno, L.memberid, L.ticketcnt);
+    -- 1 행 이(가) 병합되었습니다.
+        
+    commit;
+    -- 커밋 완료.
+    
+    select *
+    from tbl_reservation_merge@bonjumlink;
+    ---------- 하나 더 넣기----------------
+    insert into tbl_reservation_jeonghwanmo(rsvno, memberid, ticketcnt)
+    values('jeonghwanmo002', '정환모2', 10);
+    
+    commit;
+
+    merge into tbl_reservation_merge@bonjumlink R
+    using tbl_reservation_jeonghwanmo L
+    on (L.rsvno = R.rsvno)
+    when matched then
+        update set R.memberid = L.memberid
+                 , R.ticketcnt = L.ticketcnt
+    when not matched then
+        insert (rsvno, memberid, ticketcnt) values(L.rsvno, L.memberid, L.ticketcnt);
+    -- 1 행 이(가) 병합되었습니다.
+        
+    commit;
+    -- 커밋 완료.
+
+    select *
+    from tbl_reservation_merge@bonjumlink
+    order by 1;
+    
+    -------- **** 데이터 정의어(DDL == Data Defination Language) **** ---------
+    ==> DDL : create, drop, alter, truncate 
+    --> 여기서 중요한 것은 DDL 문을 실행을 하면 자동적으로 commit; 이 되어진다.
+    --  즉, auto commit 되어진다.
